@@ -4,7 +4,7 @@ Windows sends a WM_HOTKEY message to the thread that registered the key, so the 
 runs its own thread with a message loop. Esc is registered as a second hotkey only while
 recording, so Esc keeps working normally in other programs the rest of the time.
 Settings:
-  VOICE_HOTKEY  for example "ctrl+alt+space" (default), "ctrl+shift+d", "win+alt+f9"
+  VOICE_HOTKEY  for example "ctrl+alt+space" (default), "ctrl+shift+d", "f9"
 """
 import ctypes
 import os
@@ -28,6 +28,9 @@ KEYS = {"space": 0x20, "enter": 0x0D, "return": 0x0D, "tab": 0x09, "esc": VK_ESC
 KEYS.update({chr(c): c - 32 for c in range(ord("a"), ord("z") + 1)})  # letter keys = upper-case ASCII
 KEYS.update({str(d): 0x30 + d for d in range(10)})
 KEYS.update({f"f{n}": 0x6F + n for n in range(1, 25)})
+# Keys that may be used on their own: rarely needed for typing, so taking one over for
+# dictation costs little. Every other key needs a modifier.
+SOLO_KEYS = {f"f{n}" for n in range(1, 25)} | {"pause", "insert"}
 
 
 class HotkeyError(Exception):
@@ -53,8 +56,9 @@ def parse_hotkey(text: str) -> tuple[int, int]:
         raise HotkeyError(f"Hotkey '{text}' needs a key after the modifiers")
     if key not in KEYS:
         raise HotkeyError(f"Unknown key '{key}' in hotkey '{text}'")
-    if not flags:
-        raise HotkeyError(f"Hotkey '{text}' needs at least one of ctrl, alt, shift or win")
+    if not flags and key not in SOLO_KEYS:
+        raise HotkeyError(f"Hotkey '{text}' needs at least one of ctrl, alt, shift or win "
+                          "(only f1-f24, pause and insert can be used on their own)")
     return flags, KEYS[key]
 
 

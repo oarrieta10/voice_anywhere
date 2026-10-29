@@ -11,12 +11,14 @@ from voice_anywhere.hotkey import (CANCEL_ID, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT
     ("Ctrl + Shift + D", (MOD_CONTROL | MOD_SHIFT, ord("D"))),
     ("win+alt+f9", (MOD_WIN | MOD_ALT, 0x78)),
     ("control+7", (MOD_CONTROL, 0x37)),
+    ("F9", (0, 0x78)),
+    ("pause", (0, 0x13)),
 ])
 def test_parse_hotkey(text, expected):
     assert parse_hotkey(text) == expected
 
 
-@pytest.mark.parametrize("text", ["", "space", "ctrl+alt", "ctrl+banana", "hyper+a"])
+@pytest.mark.parametrize("text", ["", "space", "tab", "a", "ctrl+alt", "ctrl+banana", "hyper+a"])
 def test_parse_hotkey_rejects_bad_input(text):
     with pytest.raises(HotkeyError):
         parse_hotkey(text)

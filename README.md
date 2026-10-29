@@ -94,9 +94,14 @@ setx VOICE_WHISPER_LANG "es"
 `base` is faster but makes more mistakes than `small`. To go back to a default, remove the variable
 under *Settings > System > About > Advanced system settings > Environment Variables*.
 
-Hotkeys need at least one of `ctrl`, `alt`, `shift` or `win`, plus one key: a letter, a digit,
+A hotkey is one key, optionally with `ctrl`, `alt`, `shift` or `win` in front: a letter, a digit,
 `f1`-`f24`, `space`, `enter`, `tab`, `insert`, `delete`, `home`, `end`, `pageup`, `pagedown`,
 `pause` or an arrow (`up`, `down`, `left`, `right`).
+
+A function key (`f1`-`f24`), `pause` or `insert` can be used on its own, for example
+`setx VOICE_HOTKEY "f9"`. That key then belongs to Voice Anywhere in every program. Any
+other key needs at least one of `ctrl`, `alt`, `shift` or `win`, so that ordinary typing
+keys such as Tab or Space keep working.
 
 ## If something goes wrong
 
