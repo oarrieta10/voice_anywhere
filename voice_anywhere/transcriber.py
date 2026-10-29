@@ -77,14 +77,19 @@ def preload() -> None:
     threading.Thread(target=_warm, name="whisper-preload", daemon=True).start()
 
 
-def transcribe(audio: bytes) -> dict:
-    """Return {"text", "language", "audio_seconds", "elapsed_seconds"}."""
-    if not audio:
+def transcribe(audio) -> dict:
+    """Return {"text", "language", "audio_seconds", "elapsed_seconds"}.
+
+    `audio` is either the bytes of an audio file (any format PyAV can decode) or
+    a 16 kHz mono float32 numpy array, as recorded by recorder.py.
+    """
+    if audio is None or len(audio) == 0:
         raise TranscriberError("No audio received")
+    source = io.BytesIO(audio) if isinstance(audio, (bytes, bytearray)) else audio
     model = _get_model()
     started = time.perf_counter()
     try:
-        segments, info = model.transcribe(io.BytesIO(audio), language=language(),
+        segments, info = model.transcribe(source, language=language(),
                                           vad_filter=True, beam_size=5)
         text = " ".join(s.text.strip() for s in segments).strip()
     except Exception as exc:  # undecodable audio, etc.
