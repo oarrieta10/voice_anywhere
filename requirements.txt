@@ -1,0 +1,8 @@
+faster-whisper>=1.0
+# PyAV 19 dropped an argument faster-whisper 1.2.1 still passes; 16.x is known good.
+av>=11,<17
+# Microphone recording
+sounddevice>=0.4
+# Tray icon
+pystray>=0.19
+Pillow>=10
