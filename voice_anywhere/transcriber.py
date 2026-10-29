@@ -27,9 +27,27 @@ def model_name() -> str:
     return os.environ.get("VOICE_WHISPER_MODEL", DEFAULT_MODEL)
 
 
+_language_choice = None  # set from the tray's Language menu; wins over VOICE_WHISPER_LANG
+
+
+def set_language(choice: str | None) -> None:
+    """Use this language setting ("en", "es", "en,es", ...) instead of VOICE_WHISPER_LANG.
+
+    None goes back to the environment variable.
+    """
+    global _language_choice
+    _language_choice = choice
+
+
+def language_setting_text() -> str:
+    """The language setting in effect, as written ("en", "en,es", "auto", ...)."""
+    text = _language_choice or os.environ.get("VOICE_WHISPER_LANG", "en")
+    return text.strip().lower().replace(" ", "")
+
+
 def _language_setting() -> list[str]:
-    text = os.environ.get("VOICE_WHISPER_LANG", "en").strip().lower()
-    return [code.strip() for code in text.split(",") if code.strip() and code.strip() != "auto"]
+    text = language_setting_text()
+    return [code for code in text.split(",") if code and code != "auto"]
 
 
 def language() -> str | None:

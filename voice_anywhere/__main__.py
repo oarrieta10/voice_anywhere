@@ -7,7 +7,6 @@ copy runs, then starts the tray app. Startup problems are shown in a Windows mes
 import ctypes
 import logging
 import logging.handlers
-import os
 import sys
 from pathlib import Path
 
@@ -17,10 +16,9 @@ MB_ICONERROR = 0x10
 
 
 def log_dir() -> Path:
-    base = os.environ.get("LOCALAPPDATA") or str(Path.home())
-    path = Path(base) / "voice-anywhere"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    from .settings import data_dir
+
+    return data_dir()
 
 
 def setup_logging() -> Path:

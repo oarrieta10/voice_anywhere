@@ -69,6 +69,16 @@ def test_language_setting(monkeypatch):
     assert transcriber.allowed_languages() == ["en", "es"]
 
 
+def test_tray_choice_wins_over_environment(monkeypatch):
+    monkeypatch.setenv("VOICE_WHISPER_LANG", "en,es")
+    monkeypatch.setattr(transcriber, "_language_choice", None)
+    transcriber.set_language("es")
+    assert transcriber.language() == "es" and transcriber.allowed_languages() is None
+    assert transcriber.language_setting_text() == "es"
+    transcriber.set_language(None)
+    assert transcriber.allowed_languages() == ["en", "es"]
+
+
 class GuessingModel:
     """Fake model that 'detects' a given language when none is forced."""
 
