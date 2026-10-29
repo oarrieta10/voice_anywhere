@@ -4,7 +4,8 @@ The model is loaded once (in the background at startup, or on first use) and
 reused. Only already-downloaded models are used (local_files_only), so nothing
 is fetched from the internet. Settings:
   VOICE_WHISPER_MODEL  model size or local path   (default "small")
-  VOICE_WHISPER_LANG   language code, "auto" to detect (default "en")
+  VOICE_WHISPER_LANG   language code, "auto" to detect (default "en"), or a list such
+                       as "en,es": detect, but only ever choose one of those languages
 """
 import io
 import os
@@ -26,9 +27,27 @@ def model_name() -> str:
     return os.environ.get("VOICE_WHISPER_MODEL", DEFAULT_MODEL)
 
 
+def _language_setting() -> list[str]:
+    text = os.environ.get("VOICE_WHISPER_LANG", "en").strip().lower()
+    return [code.strip() for code in text.split(",") if code.strip() and code.strip() != "auto"]
+
+
 def language() -> str | None:
-    lang = os.environ.get("VOICE_WHISPER_LANG", "en").strip().lower()
-    return None if lang in ("", "auto") else lang
+    """The one language to use, or None to let Whisper detect it."""
+    codes = _language_setting()
+    return codes[0] if len(codes) == 1 else None
+
+
+def allowed_languages() -> list[str] | None:
+    """For a list such as "en,es": the languages detection may choose from; otherwise None."""
+    codes = _language_setting()
+    return codes if len(codes) > 1 else None
+
+
+def _best_allowed(all_probs, allowed) -> str:
+    """The allowed language Whisper rated most likely."""
+    scores = dict(all_probs or [])
+    return max(allowed, key=lambda code: scores.get(code, 0.0))
 
 
 def available() -> bool:
@@ -85,12 +104,21 @@ def transcribe(audio) -> dict:
     """
     if audio is None or len(audio) == 0:
         raise TranscriberError("No audio received")
-    source = io.BytesIO(audio) if isinstance(audio, (bytes, bytearray)) else audio
+    def source():
+        return io.BytesIO(audio) if isinstance(audio, (bytes, bytearray)) else audio
+
     model = _get_model()
     started = time.perf_counter()
+    allowed = allowed_languages()
     try:
-        segments, info = model.transcribe(source, language=language(),
+        # Whisper detects the language before writing any text (the segments are only
+        # produced as they are read), so a wrong guess costs one detection, not a transcription.
+        segments, info = model.transcribe(source(), language=language(),
                                           vad_filter=True, beam_size=5)
+        if allowed and info.language not in allowed:
+            segments, info = model.transcribe(
+                source(), language=_best_allowed(info.all_language_probs, allowed),
+                vad_filter=True, beam_size=5)
         text = " ".join(s.text.strip() for s in segments).strip()
     except Exception as exc:  # undecodable audio, etc.
         raise TranscriberError(f"Could not transcribe the recording: {exc}"[:300]) from exc
