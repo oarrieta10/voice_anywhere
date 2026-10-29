@@ -121,8 +121,13 @@ class Dictation:
 
 def run() -> int:
     """Start the tray app. Returns the process exit code."""
+    from . import settings
     from .overlay import Overlay
     from .tray import Tray
+
+    saved_language = settings.load().get("language")
+    if saved_language:  # chosen earlier in the tray menu
+        transcriber.set_language(saved_language)
 
     overlay = Overlay()
     tray = Tray(overlay)

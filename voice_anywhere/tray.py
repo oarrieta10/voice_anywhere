@@ -8,9 +8,14 @@ import threading
 
 from PIL import Image, ImageDraw
 
-from . import transcriber
+from . import settings, transcriber
 
 log = logging.getLogger("voice_anywhere")
+
+# The tray's Language menu: (menu text, VOICE_WHISPER_LANG-style setting).
+LANGUAGES = [("English", "en"), ("Spanish", "es"), ("Detect English or Spanish", "en,es")]
+LANGUAGE_SHORT = {"en": "English", "es": "Spanish", "en,es": "English or Spanish",
+                  "auto": "any language"}
 
 STATE_COLOURS = {"idle": (52, 101, 164), "listening": (192, 57, 43),
                  "transcribing": (183, 121, 31)}
@@ -70,7 +75,18 @@ class Tray:
             return "Problem: " + info["error"]
         if not info["loaded"]:
             return f"Loading speech model ({info['model']})…"
-        return f"Ready: press {self.hotkey_name.title()} to dictate"
+        return f"Ready: press {self.hotkey_name.title()} to dictate ({self.language_name()})"
+
+    def language_name(self) -> str:
+        code = transcriber.language_setting_text()
+        return LANGUAGE_SHORT.get(code, code)
+
+    def choose_language(self, code: str) -> None:
+        """Called from the Language menu: use this language now and remember it."""
+        transcriber.set_language(code)
+        settings.save(language=code)
+        log.info("Language set to %s", code)
+        self._refresh()
 
     def _title(self) -> str:
         return ("Voice Anywhere: " + self.status_text())[:127]  # Windows tooltip limit
@@ -98,8 +114,16 @@ class Tray:
         """Show the tray icon; returns when Quit is chosen."""
         import pystray
 
+        def language_item(label, code):
+            return pystray.MenuItem(
+                label, lambda icon, item: self.choose_language(code), radio=True,
+                checked=lambda item: transcriber.language_setting_text() == code)
+
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: self.status_text(), None, enabled=False),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Language", pystray.Menu(
+                *(language_item(label, code) for label, code in LANGUAGES))),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self._quit),
         )

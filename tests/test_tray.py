@@ -62,9 +62,31 @@ def test_status_text(monkeypatch):
     assert "Loading" in t.status_text()
     monkeypatch.setattr(transcriber, "status",
                         lambda: {"available": True, "model": "small", "loaded": True, "error": None})
-    assert t.status_text() == "Ready: press F9 to dictate"
+    assert t.status_text().startswith("Ready: press F9 to dictate (")
     t.state = "listening"
     assert "Esc to cancel" in t.status_text()
+
+
+def test_choosing_a_language_applies_and_remembers_it(monkeypatch, tmp_path):
+    from voice_anywhere import settings
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("VOICE_WHISPER_LANG", "en,es")
+    monkeypatch.setattr(transcriber, "_language_choice", None)
+    monkeypatch.setattr(transcriber, "status",
+                        lambda: {"available": True, "model": "small", "loaded": True, "error": None})
+    t = Tray(FakeOverlay())
+    t.hotkey_name = "f9"
+    assert t.status_text().endswith("(English or Spanish)")
+    t.choose_language("es")
+    assert transcriber.language() == "es"
+    assert settings.load() == {"language": "es"}
+    assert t.status_text() == "Ready: press F9 to dictate (Spanish)"
+
+
+def test_every_menu_language_has_a_short_name():
+    for _, code in tray.LANGUAGES:
+        assert code in tray.LANGUAGE_SHORT
 
 
 def test_icons_are_drawn_for_each_state():

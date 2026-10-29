@@ -12,7 +12,8 @@ The transcription code started as a copy of `app/transcriber.py` from the siblin
 change or depend on Kuadrant.
 
 ## Agreed design
-- **Tray app** (`pystray` + `Pillow`) that starts with Windows and lives by the clock. Menu: status, Quit.
+- **Tray app** (`pystray` + `Pillow`) that starts with Windows and lives by the clock. Menu: status, Language (English / Spanish /
+  detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Quit.
 - **Hotkey: press once to start, press again to stop** (toggle, not hold-to-talk). Default `Ctrl+Alt+Space`.
   `Esc` while recording cancels and inserts nothing. Register the hotkey with the Win32 `RegisterHotKey`
   function through `ctypes` (no extra package).

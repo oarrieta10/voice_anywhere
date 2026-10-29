@@ -50,7 +50,14 @@ it next to the clock to keep it visible).
 | Red | Listening |
 | Amber | Transcribing |
 
-Right-click it to see the current status or to **Quit**.
+Right-click it to see the current status, to pick the **Language** you will speak, or to **Quit**.
+
+The **Language** menu has:
+- **English** or **Spanish**: the quickest, every dictation is in that language;
+- **Detect English or Spanish**: each dictation comes out in whichever of the two you spoke,
+  at the cost of about one extra second per dictation.
+
+Your choice takes effect straight away and is remembered the next time the app starts.
 
 The speech model takes a few seconds to load after the app starts. If you dictate before it is
 ready, the first dictation simply takes a little longer.
@@ -107,7 +114,12 @@ setx VOICE_HOTKEY "ctrl+shift+d"
 setx VOICE_WHISPER_LANG "es"
 ```
 
-**Dictating in English and Spanish:** `setx VOICE_WHISPER_LANG "en,es"` makes each dictation
+A language picked in the tray's **Language** menu wins over `VOICE_WHISPER_LANG`. The choice is
+saved in `%LOCALAPPDATA%\voice-anywhere\settings.json`; delete that file to go back to using
+the variable.
+
+**Dictating in English and Spanish:** `setx VOICE_WHISPER_LANG "en,es"` (or the tray's
+"Detect English or Spanish") makes each dictation
 come out in whichever of the two you spoke. Choosing from just those two is more reliable than
 `auto`, which can mistake Spanish for Portuguese, Galician or Catalan. The language check adds
 about one second to each dictation; a single fixed language (`en` or `es`) is the quickest.
@@ -171,6 +183,7 @@ How the code is laid out (`voice_anywhere\`):
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
+| `settings.py` | Remembers choices made in the tray menu (the language) |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |
 | `pill.py` | Draws the pill: sound bars while listening, a dot wave while transcribing |
