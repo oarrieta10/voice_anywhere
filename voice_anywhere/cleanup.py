@@ -1,27 +1,38 @@
 """Simple, predictable cleanup of the transcribed text before it is pasted. Fully offline.
 
-Rules, in order:
-  1. Filler sounds are removed: um, uh, uhm, er, erm, hmm (with the commas around them).
+Works for English and Spanish. Rules, in order:
+  1. Filler sounds are removed, with the commas around them:
+       English: um, uh, uhm, er, erm, hmm      Spanish: eh, em, mmm
      "I think, um, we should" -> "I think we should"
+     "Creo que, eh, deberíamos" -> "Creo que deberíamos"
+     Real words that are also used as fillers ("este", "o sea", "like") are left alone,
+     because removing them could change the meaning.
   2. A word said twice in a row is kept once: "the the report" -> "the report".
      Words that are often doubled on purpose are left alone ("that that", "had had",
-     "no no", "bye bye", ...).
+     "no no", "sí sí", "ya ya", ...).
   3. Spacing and punctuation are tidied: no double spaces, no space before a comma or
      full stop, no ",." left behind.
-  4. A sentence that now starts with a lower-case letter (because a filler was removed
-     from its start) gets its capital back.
+  4. Where a filler was removed from the start of a sentence, the next word gets its
+     capital back ("Um, so we..." -> "So we...", "Eh, ¿qué tal?" -> "¿Qué tal?").
 Settings:
   VOICE_CLEANUP  "on" (default) or "off"
 """
 import os
 import re
 
-FILLERS = r"(?:u+m+|u+h+|uhm|e+r+m*|h+m+)"
-# Filler, with an optional comma before and after. A filler at the very start keeps no space.
-_FILLER = re.compile(r"(?:,\s*|\s+|^)" + r"\b" + FILLERS + r"\b(?:\s*,)?", re.IGNORECASE)
-KEEP_DOUBLED = {"that", "had", "is", "no", "so", "very", "bye", "ha", "hey", "now", "well"}
-_DOUBLED = re.compile(r"\b([A-Za-z']+)(?:[\s,]+\1\b)+", re.IGNORECASE)
-_SENTENCE_START = re.compile(r"(^|[.!?]\s+)([a-z])")
+FILLERS = r"(?:u+m+|u+h+|uhm|e+r+m*|h+m+|e+h+|e+m+|m{2,})"
+_MARK = "\x00"  # marks where a filler was taken out, for rule 4
+# A filler as a whole word (not part of "uh-huh" or "'em"), with an optional comma before
+# and after.
+_FILLER = re.compile(r"(?:,\s*|\s+|^)(?<![-'’])\b" + FILLERS + r"\b(?![-'’])(?:\s*,)?",
+                     re.IGNORECASE)
+KEEP_DOUBLED = {"that", "had", "is", "no", "so", "very", "bye", "ha", "hey", "now", "well",
+                "sí", "si", "ya", "muy", "adiós", "ay", "ja", "poco", "casi"}
+_WORD = r"[^\W\d_]+(?:['’][^\W\d_]+)?"  # letters in any language, with "it's"-style apostrophes
+_DOUBLED = re.compile(r"\b(" + _WORD + r")(?:[\s,]+\1\b)+", re.IGNORECASE)
+# A marked spot at the start of the text or of a sentence, then (after any spaces, commas
+# and an opening ¿ or ¡) the first letter of the next word.
+_MARKED_START = re.compile(r"(^|[.!?])(\s*)" + _MARK + r"[\s,]*([¿¡]?)([^\W\d_])")
 
 
 def enabled() -> bool:
@@ -30,7 +41,16 @@ def enabled() -> bool:
 
 def _remove_fillers(text: str) -> str:
     # Keep a space between the words on either side; _tidy() removes any extra ones.
-    return _FILLER.sub(lambda m: "" if m.start() == 0 else " ", text)
+    return _FILLER.sub(lambda m: _MARK if m.start() == 0 else " " + _MARK, text)
+
+
+def _restore_capitals(text: str, at_start: bool) -> str:
+    def replace(match):
+        start, space, opener, letter = match.groups()
+        if start or at_start:
+            letter = letter.upper()
+        return start + space + opener + letter
+    return _MARKED_START.sub(replace, text).replace(_MARK, "")
 
 
 def _remove_doubles(text: str) -> str:
@@ -52,10 +72,9 @@ def _tidy(text: str) -> str:
 def clean(text: str) -> str:
     if not text:
         return text
-    was_capitalised = text.lstrip()[:1].isupper()
-    cleaned = _tidy(_remove_doubles(_remove_fillers(text)))
-    if not re.search(r"[A-Za-z0-9]", cleaned):
+    was_capitalised = text.lstrip()[:1].isupper() or text.lstrip()[1:2].isupper()
+    cleaned = _restore_capitals(_remove_fillers(text), was_capitalised)
+    cleaned = _tidy(_remove_doubles(cleaned))
+    if not re.search(r"[^\W_]", cleaned):
         return ""  # nothing but fillers and punctuation
-    if was_capitalised:
-        cleaned = _SENTENCE_START.sub(lambda m: m.group(1) + m.group(2).upper(), cleaned)
     return cleaned

@@ -28,6 +28,28 @@ from voice_anywhere.cleanup import clean
      "Please send the revised pump calculations by Friday."),
     ("The summary is umbrella-shaped, uh, erm.", "The summary is umbrella-shaped."),
     ("Her name is Erma.", "Her name is Erma."),
+    ("Emma said uh-huh.", "Emma said uh-huh."),
+    ("Let 'em know.", "Let 'em know."),
+    ("Mmm, that works.", "That works."),
+    # a capital is only restored where a filler was removed
+    ("We meet at 3 p.m. today.", "We meet at 3 p.m. today."),
+    ("See e.g. the drawing.", "See e.g. the drawing."),
+    # Spanish fillers
+    ("Creo que, eh, deberíamos enviarlo.", "Creo que deberíamos enviarlo."),
+    ("Eh, la bomba está funcionando.", "La bomba está funcionando."),
+    ("Mmm, no estoy seguro.", "No estoy seguro."),
+    ("Necesitamos, em, más tiempo.", "Necesitamos más tiempo."),
+    ("Listo. Eh, ¿qué sigue?", "Listo. ¿Qué sigue?"),
+    ("Eh, él llamó ayer.", "Él llamó ayer."),
+    # Spanish doubled words
+    ("El el informe está listo.", "El informe está listo."),
+    ("Revisa la, la presión.", "Revisa la presión."),
+    ("Sí sí, claro.", "Sí sí, claro."),
+    ("Ya ya, lo sé.", "Ya ya, lo sé."),
+    # real Spanish words that are sometimes fillers stay
+    ("Este proyecto, o sea, el nuevo.", "Este proyecto, o sea, el nuevo."),
+    ("Pues mira, está bien.", "Pues mira, está bien."),
+    ("¿Cómo estás?", "¿Cómo estás?"),
 ])
 def test_clean(before, after):
     assert clean(before) == after
