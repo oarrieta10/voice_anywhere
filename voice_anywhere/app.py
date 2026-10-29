@@ -10,7 +10,7 @@ The transcribed text is never logged; only lengths and timings are.
 import logging
 import threading
 
-from . import transcriber
+from . import cleanup, transcriber
 from .hotkey import HotkeyListener
 from .inserter import Inserter
 from .recorder import SAMPLE_RATE, Recorder
@@ -21,13 +21,18 @@ IDLE, LISTENING, TRANSCRIBING = "idle", "listening", "transcribing"
 MIN_SECONDS = 0.3  # shorter recordings are treated as an accidental double press
 
 
+def _clean(text):
+    return cleanup.clean(text) if cleanup.enabled() else text
+
+
 def _spawn(target):
     threading.Thread(target=target, name="dictation", daemon=True).start()
 
 
 class Dictation:
-    def __init__(self, recorder, inserter, transcribe, ui, spawn=_spawn):
-        """ui needs set_state(state) and notify(message, kind)."""
+    def __init__(self, recorder, inserter, transcribe, ui, spawn=_spawn, clean=None):
+        """ui needs set_state(state) and notify(message, kind); clean tidies the text."""
+        self.clean = clean or _clean
         self.recorder = recorder
         self.inserter = inserter
         self.transcribe = transcribe
@@ -98,9 +103,10 @@ class Dictation:
     def _transcribe_and_insert(self, audio):
         try:
             result = self.transcribe(audio)
-            text = result["text"]
-            log.info("Transcribed %.1f s of audio in %.1f s: %d characters",
-                     result["audio_seconds"], result["elapsed_seconds"], len(text))
+            raw = result["text"]
+            text = self.clean(raw)
+            log.info("Transcribed %.1f s of audio in %.1f s: %d characters (%d after cleanup)",
+                     result["audio_seconds"], result["elapsed_seconds"], len(raw), len(text))
             if text:
                 self.inserter.insert(text)
             else:

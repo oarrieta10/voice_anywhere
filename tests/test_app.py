@@ -150,6 +150,33 @@ def test_transcription_error_is_shown_and_returns_to_idle():
     assert d.state == IDLE
 
 
+def test_text_is_cleaned_before_pasting(monkeypatch):
+    monkeypatch.delenv("VOICE_CLEANUP", raising=False)
+    d, recorder, inserter, ui, hotkey, pending = make(text="Um, the the pump is on.")
+    d.toggle()
+    d.toggle()
+    pending.pop()()
+    assert inserter.log[-1] == ("insert", "The pump is on.")
+
+
+def test_cleanup_can_be_switched_off(monkeypatch):
+    monkeypatch.setenv("VOICE_CLEANUP", "off")
+    d, recorder, inserter, ui, hotkey, pending = make(text="Um, the pump is on.")
+    d.toggle()
+    d.toggle()
+    pending.pop()()
+    assert inserter.log[-1] == ("insert", "Um, the pump is on.")
+
+
+def test_only_fillers_counts_as_no_speech():
+    d, recorder, inserter, ui, hotkey, pending = make(text="Um.")
+    d.toggle()
+    d.toggle()
+    pending.pop()()
+    assert ui.notes == [("info", "No speech heard")]
+    assert inserter.log == ["remember"]
+
+
 def test_transcribed_text_is_never_logged(caplog):
     caplog.set_level("DEBUG")
     d, *_, pending = make(text="secret project budget")

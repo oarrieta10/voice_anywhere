@@ -27,6 +27,14 @@ straight through it.
   started in.
 - One recording can last up to 2 minutes; after that it stops by itself and types what it heard.
 - If it heard nothing, the dots simply fade away and nothing is typed.
+- The text is tidied before it is typed (all on this laptop, no AI):
+  - filler sounds go: "I think, um, we should" becomes "I think we should"
+    (um, uh, uhm, er, erm, hmm);
+  - a word said twice by accident is kept once: "the the report" becomes "the report".
+    Words often doubled on purpose stay ("that that", "had had", "no no", "bye bye");
+  - stray spaces and leftover commas are removed, and a sentence that started with a filler
+    gets its capital letter back.
+  To switch this off, see `VOICE_CLEANUP` under Settings.
 - Your clipboard is left as it was: the app borrows it for a moment to paste, then puts your
   previous contents back. The dictated text is also kept out of Windows clipboard history (Win+V).
 
@@ -86,6 +94,7 @@ quit Voice Anywhere from the tray and start it again (or sign out and back in).
 | `VOICE_HOTKEY` | The start/stop key, for example `ctrl+shift+d` or `win+alt+f9` | `ctrl+alt+space` |
 | `VOICE_WHISPER_LANG` | Language you speak, as a two-letter code (`en`, `es`, ...), or `auto` to detect it each time | `en` |
 | `VOICE_WHISPER_MODEL` | Model size (`small` or `base`), or a folder containing a model | `small` |
+| `VOICE_CLEANUP` | Tidy the text before typing it (`on`), or type exactly what Whisper wrote (`off`) | `on` |
 
 Examples:
 
@@ -154,6 +163,7 @@ How the code is laid out (`voice_anywhere\`):
 | `hotkey.py` | The global hotkey and Esc, through the Windows `RegisterHotKey` function |
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
+| `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |
 | `pill.py` | Draws the pill: sound bars while listening, a dot wave while transcribing |
