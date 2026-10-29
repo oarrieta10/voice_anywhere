@@ -1,0 +1,168 @@
+import uuid
+
+import numpy as np
+import pytest
+
+from voice_anywhere import __main__ as main_module
+from voice_anywhere.app import IDLE, LISTENING, TRANSCRIBING, Dictation
+from voice_anywhere.recorder import SAMPLE_RATE, RecorderError
+
+
+class FakeRecorder:
+    def __init__(self, seconds=2.0, fail=False):
+        self.seconds = seconds
+        self.fail = fail
+        self.log = []
+
+    def start(self):
+        if self.fail:
+            raise RecorderError("Could not open the microphone: no device")
+        self.log.append("start")
+
+    def stop(self):
+        self.log.append("stop")
+        return np.zeros(int(self.seconds * SAMPLE_RATE), dtype=np.float32)
+
+    def cancel(self):
+        self.log.append("cancel")
+
+
+class FakeInserter:
+    def __init__(self):
+        self.log = []
+
+    def remember_target(self):
+        self.log.append("remember")
+
+    def insert(self, text):
+        self.log.append(("insert", text))
+        return True
+
+
+class FakeUI:
+    def __init__(self):
+        self.states = []
+        self.notes = []
+
+    def set_state(self, state):
+        self.states.append(state)
+
+    def notify(self, message, kind="error"):
+        self.notes.append((kind, message))
+
+
+class FakeHotkey:
+    def __init__(self):
+        self.log = []
+
+    def enable_cancel(self):
+        self.log.append("esc on")
+
+    def disable_cancel(self):
+        self.log.append("esc off")
+
+
+def make(text="Hello world.", transcribe=None, **recorder_kwargs):
+    pending = []
+    recorder, inserter, ui, hotkey = FakeRecorder(**recorder_kwargs), FakeInserter(), FakeUI(), FakeHotkey()
+
+    def fake_transcribe(audio):
+        return {"text": text, "language": "en", "audio_seconds": len(audio) / SAMPLE_RATE,
+                "elapsed_seconds": 0.5}
+
+    d = Dictation(recorder, inserter, transcribe or fake_transcribe, ui, spawn=pending.append)
+    d.hotkey = hotkey
+    return d, recorder, inserter, ui, hotkey, pending
+
+
+def test_press_speak_press_inserts_text():
+    d, recorder, inserter, ui, hotkey, pending = make()
+    d.toggle()
+    assert d.state == LISTENING
+    assert inserter.log == ["remember"] and recorder.log == ["start"]
+    d.toggle()
+    assert d.state == TRANSCRIBING
+    d.toggle()  # pressing again while transcribing is ignored
+    assert recorder.log == ["start", "stop"]
+    pending.pop()()  # run the background job
+    assert inserter.log == ["remember", ("insert", "Hello world.")]
+    assert ui.states == [LISTENING, TRANSCRIBING, IDLE]
+    assert hotkey.log == ["esc on", "esc off"]
+
+
+def test_escape_cancels_and_inserts_nothing():
+    d, recorder, inserter, ui, hotkey, pending = make()
+    d.toggle()
+    d.cancel()
+    assert d.state == IDLE
+    assert recorder.log == ["start", "cancel"]
+    assert pending == [] and inserter.log == ["remember"]
+    assert hotkey.log == ["esc on", "esc off"]
+
+
+def test_escape_when_idle_does_nothing():
+    d, recorder, *_ = make()
+    d.cancel()
+    assert recorder.log == [] and d.state == IDLE
+
+
+def test_very_short_recording_is_ignored():
+    d, recorder, inserter, ui, hotkey, pending = make(seconds=0.1)
+    d.toggle()
+    d.toggle()
+    assert d.state == IDLE and pending == []
+
+
+def test_maximum_length_transcribes():
+    d, recorder, inserter, ui, hotkey, pending = make()
+    d.toggle()
+    d.limit_reached()
+    assert d.state == TRANSCRIBING
+    pending.pop()()
+    assert ("insert", "Hello world.") in inserter.log
+
+
+def test_no_speech_shows_message_and_inserts_nothing():
+    d, recorder, inserter, ui, hotkey, pending = make(text="")
+    d.toggle()
+    d.toggle()
+    pending.pop()()
+    assert ui.notes == [("info", "No speech heard")]
+    assert inserter.log == ["remember"] and d.state == IDLE
+
+
+def test_microphone_error_is_shown_and_stays_idle():
+    d, recorder, inserter, ui, hotkey, pending = make(fail=True)
+    d.toggle()
+    assert d.state == IDLE and hotkey.log == []
+    assert ui.notes[0][0] == "error" and "microphone" in ui.notes[0][1]
+
+
+def test_transcription_error_is_shown_and_returns_to_idle():
+    def broken(audio):
+        raise RuntimeError("model missing")
+
+    d, recorder, inserter, ui, hotkey, pending = make(transcribe=broken)
+    d.toggle()
+    d.toggle()
+    pending.pop()()
+    assert ui.notes == [("error", "model missing")]
+    assert d.state == IDLE
+
+
+def test_transcribed_text_is_never_logged(caplog):
+    caplog.set_level("DEBUG")
+    d, *_, pending = make(text="secret project budget")
+    d.toggle()
+    d.toggle()
+    pending.pop()()
+    assert "secret" not in caplog.text
+    assert "21 characters" in caplog.text
+
+
+def test_single_instance_mutex(monkeypatch):
+    monkeypatch.setattr(main_module, "MUTEX_NAME", f"Local\\VoiceAnywhereTest.{uuid.uuid4()}")
+    assert main_module.already_running() is False
+    first = main_module._mutex
+    assert main_module.already_running() is True
+    main_module._mutex = first  # keep the first handle referenced until the test ends
