@@ -47,7 +47,7 @@ change or depend on Kuadrant.
 | Variable | Purpose | Default |
 |---|---|---|
 | `VOICE_WHISPER_MODEL` | Whisper model size or folder | `small` |
-| `VOICE_WHISPER_LANG` | Language code, or `auto` | `en` |
+| `VOICE_WHISPER_LANG` | Language code, `auto`, or a list such as `en,es` (detect, choosing only from those) | `en` |
 | `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space` | `ctrl+alt+space` |
 | `VOICE_CLEANUP` | Rule-based text cleanup (`voice_anywhere/cleanup.py`), `on` or `off` | `on` |
 

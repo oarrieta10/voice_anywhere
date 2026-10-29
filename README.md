@@ -29,9 +29,10 @@ straight through it.
 - If it heard nothing, the dots simply fade away and nothing is typed.
 - The text is tidied before it is typed (all on this laptop, no AI):
   - filler sounds go: "I think, um, we should" becomes "I think we should"
-    (um, uh, uhm, er, erm, hmm);
+    (English um, uh, uhm, er, erm, hmm; Spanish eh, em, mmm). Real words that are sometimes
+    used as fillers ("este", "o sea", "pues", "like") are left alone;
   - a word said twice by accident is kept once: "the the report" becomes "the report".
-    Words often doubled on purpose stay ("that that", "had had", "no no", "bye bye");
+    Words often doubled on purpose stay ("that that", "had had", "no no", "sí sí", "ya ya");
   - stray spaces and leftover commas are removed, and a sentence that started with a filler
     gets its capital letter back.
   To switch this off, see `VOICE_CLEANUP` under Settings.
@@ -92,7 +93,7 @@ quit Voice Anywhere from the tray and start it again (or sign out and back in).
 | Variable | What it does | Default |
 |---|---|---|
 | `VOICE_HOTKEY` | The start/stop key, for example `ctrl+shift+d` or `win+alt+f9` | `ctrl+alt+space` |
-| `VOICE_WHISPER_LANG` | Language you speak, as a two-letter code (`en`, `es`, ...), or `auto` to detect it each time | `en` |
+| `VOICE_WHISPER_LANG` | Language you speak, as a two-letter code (`en`, `es`, ...); a list such as `en,es` to detect which of those you are speaking; or `auto` to detect any language | `en` |
 | `VOICE_WHISPER_MODEL` | Model size (`small` or `base`), or a folder containing a model | `small` |
 | `VOICE_CLEANUP` | Tidy the text before typing it (`on`), or type exactly what Whisper wrote (`off`) | `on` |
 
@@ -105,6 +106,12 @@ setx VOICE_HOTKEY "ctrl+shift+d"
 ```powershell
 setx VOICE_WHISPER_LANG "es"
 ```
+
+**Dictating in English and Spanish:** `setx VOICE_WHISPER_LANG "en,es"` makes each dictation
+come out in whichever of the two you spoke. Choosing from just those two is more reliable than
+`auto`, which can mistake Spanish for Portuguese, Galician or Catalan. The language check adds
+about one second to each dictation; a single fixed language (`en` or `es`) is the quickest.
+Very short dictations (one or two words) are the hardest to tell apart.
 
 `base` is faster but makes more mistakes than `small`. To go back to a default, remove the variable
 under *Settings > System > About > Advanced system settings > Environment Variables*.
