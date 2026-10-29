@@ -18,7 +18,8 @@ change or depend on Kuadrant.
   function through `ctypes` (no extra package).
 - **Recording** from the default microphone with `sounddevice`, 16 kHz mono, kept in memory only
   (never written to disk). A maximum length stops runaway recordings.
-- **Feedback:** a small floating "Listening… / Transcribing…" badge near the bottom of the screen, plus
+- **Feedback:** a small floating black pill in the bottom-right corner above the taskbar (live sound
+  bars while listening, a calm dot wave while transcribing, fades in and out), plus
   the tray icon changing state. It must not take keyboard focus away from the target window.
 - **Transcription:** `voice_anywhere/transcriber.py`, faster-whisper on the CPU, `int8`, `vad_filter=True`,
   `local_files_only=True`. The model is preloaded in the background at start-up.

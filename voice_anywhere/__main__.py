@@ -47,6 +47,17 @@ def already_running() -> bool:
     return ctypes.get_last_error() == ERROR_ALREADY_EXISTS
 
 
+def use_sharp_display_scaling() -> None:
+    """Tell Windows we handle display scaling (125%, 150%...) ourselves.
+
+    Without this, Windows stretches the pill and the tray icon, which makes them blurry.
+    """
+    try:
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))  # per monitor v2
+    except (AttributeError, OSError):
+        pass  # older Windows: it still works, just less sharp
+
+
 def message_box(text: str) -> None:
     ctypes.windll.user32.MessageBoxW(None, text, "Voice Anywhere", MB_ICONERROR)
 
@@ -57,6 +68,7 @@ def main() -> int:
     if already_running():
         log.info("Another copy is already running; exiting")
         return 0
+    use_sharp_display_scaling()
     try:
         from .app import run
 

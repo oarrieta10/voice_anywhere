@@ -45,6 +45,7 @@ class Recorder:
         self.max_frames = int(max_seconds * SAMPLE_RATE)
         self.on_limit = on_limit
         self.on_level = on_level
+        self.peak_level = 0.0  # loudest block of the current recording (for the log)
         self._stream_factory = stream_factory
         self._stream = None
         self._chunks = []
@@ -61,6 +62,7 @@ class Recorder:
             return
         with self._lock:
             self._chunks, self._frames, self._limit_hit = [], 0, False
+            self.peak_level = 0.0
         try:
             stream = self._stream_factory(samplerate=SAMPLE_RATE, channels=1,
                                           dtype="float32", callback=self._callback)
@@ -79,8 +81,10 @@ class Recorder:
             self._frames += len(block)
             self._limit_hit = self._frames >= self.max_frames
             limit_hit = self._limit_hit
+        level = loudness(block)
+        self.peak_level = max(self.peak_level, level)
         if self.on_level is not None:
-            self.on_level(loudness(block))
+            self.on_level(level)
         if limit_hit and self.on_limit is not None:
             # Never stop the stream from inside its own callback.
             threading.Thread(target=self.on_limit, name="recording-limit", daemon=True).start()

@@ -86,6 +86,8 @@ class Dictation:
         audio = self.recorder.stop()
         self._cancel_key(False)
         seconds = len(audio) / SAMPLE_RATE
+        log.info("Recorded %.1f s, loudest moment %.2f (0 = silent, 1 = full bars)",
+                 seconds, getattr(self.recorder, "peak_level", 0.0))
         if seconds < MIN_SECONDS:
             log.info("Recording too short (%.2f s), nothing to do", seconds)
             self._set_state(IDLE)
@@ -113,35 +115,31 @@ class Dictation:
 
 def run() -> int:
     """Start the tray app. Returns the process exit code."""
-    import tkinter as tk
-
-    from .badge import Badge
+    from .overlay import Overlay
     from .tray import Tray
 
-    root = tk.Tk()
-    badge = Badge(root)
-    tray = Tray(root, badge)
-    dictation = Dictation(Recorder(on_limit=lambda: dictation.limit_reached()), Inserter(),
-                          transcriber.transcribe, tray)
+    overlay = Overlay()
+    tray = Tray(overlay)
+    recorder = Recorder(on_limit=lambda: dictation.limit_reached(), on_level=overlay.set_level)
+    dictation = Dictation(recorder, Inserter(), transcriber.transcribe, tray)
     try:
         listener = HotkeyListener(on_toggle=dictation.toggle, on_cancel=dictation.cancel)
         listener.start()
     except Exception as exc:
-        root.destroy()
         raise SystemExit(str(exc))
     dictation.hotkey = listener
     tray.hotkey_name = listener.hotkey
 
     def quit_app():
         listener.stop()
-        root.quit()
+        recorder.cancel()
+        overlay.stop()
 
     tray.on_quit = quit_app
+    overlay.start()
     transcriber.preload()
-    tray.start()
     log.info("Voice Anywhere started (hotkey %s, model %s)", listener.hotkey,
              transcriber.model_name())
-    root.mainloop()
-    tray.stop()
+    tray.run()
     log.info("Voice Anywhere stopped")
     return 0

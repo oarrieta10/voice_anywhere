@@ -11,16 +11,22 @@ and the log never contains what you said.
 ## Everyday use
 
 1. Click where you want the text (an Outlook email, a Teams chat, a Word document, a browser box...).
-2. Press **Ctrl+Alt+Space**. A red **● Listening…** badge appears near the bottom of the screen.
+2. Press **Ctrl+Alt+Space** (or your own hotkey, see Settings). A small black pill fades in at
+   the bottom-right corner of the screen, above the clock. Its white bars move with your voice,
+   so you can see the microphone is hearing you.
 3. Speak normally. Punctuation is added for you.
-4. Press **Ctrl+Alt+Space** again. The badge turns amber (**Transcribing…**) for a second or two,
-   then the text is typed in at your cursor.
+4. Press the hotkey again. The pill shrinks to a row of dots with a soft wave running across
+   them while your speech is turned into text (a second or two), then fades away as the text
+   is typed in at your cursor.
 
-- **Esc** while the red badge shows: cancel, nothing is typed.
+The pill never takes the cursor away from the program you are typing in, and mouse clicks go
+straight through it.
+
+- **Esc** while the bars show: cancel, nothing is typed.
 - If you click into another window while speaking, the text still goes to the window you
   started in.
 - One recording can last up to 2 minutes; after that it stops by itself and types what it heard.
-- If it heard nothing, a grey **No speech heard** badge shows briefly.
+- If it heard nothing, the dots simply fade away and nothing is typed.
 - Your clipboard is left as it was: the app borrows it for a moment to paste, then puts your
   previous contents back. The dictated text is also kept out of Windows clipboard history (Win+V).
 
@@ -110,7 +116,7 @@ keys such as Tab or Space keep working.
 - **Nothing is heard, or "Could not open the microphone".** Check *Settings > Privacy & security >
   Microphone*: "Microphone access" and "Let desktop apps access your microphone" must be on. The app
   uses the default microphone (*Settings > System > Sound > Input*).
-- **The badge shows but no text appears in one particular program.** Windows does not let normal
+- **The pill shows but no text appears in one particular program.** Windows does not let normal
   programs type into programs that run *as administrator*. Dictate into a normal window instead,
   or start Voice Anywhere as administrator too.
 - **Text appears in the wrong place.** The text goes into the window that had focus when you pressed
@@ -150,7 +156,8 @@ How the code is laid out (`voice_anywhere\`):
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |
-| `badge.py` | The floating Listening / Transcribing badge (never takes the focus) |
+| `pill.py` | Draws the pill: sound bars while listening, a dot wave while transcribing |
+| `overlay.py` | Shows the pill in a see-through, click-through window that never takes the focus |
 
 `scripts\make_shortcut.ps1` makes the Startup shortcut; `scripts\make_icon.py` redraws
 `voice-anywhere.ico` (`.venv\Scripts\python.exe -m scripts.make_icon`).
