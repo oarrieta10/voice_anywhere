@@ -3,7 +3,7 @@ import threading
 import numpy as np
 import pytest
 
-from voice_anywhere.recorder import SAMPLE_RATE, Recorder, RecorderError
+from voice_anywhere.recorder import SAMPLE_RATE, Recorder, RecorderError, loudness
 
 
 class FakeStream:
@@ -92,6 +92,26 @@ def test_maximum_length_trims_and_calls_on_limit(streams):
     made[0].feed([7])  # ignored once the limit is reached
     assert called.wait(2)
     np.testing.assert_allclose(rec.stop(), [1, 2, 3, 4])
+
+
+def test_loudness_of_each_block_is_reported(streams):
+    made, factory = streams
+    levels = []
+    rec = Recorder(on_level=levels.append, stream_factory=factory)
+    rec.start()
+    made[0].feed([0.0] * 160)  # silence
+    made[0].feed([0.3, -0.3] * 80)  # speech-like loudness
+    rec.stop()
+    assert levels[0] == 0.0
+    assert levels[1] == 1.0
+
+
+def test_loudness_scale():
+    assert loudness(np.zeros(100, dtype=np.float32)) == 0.0
+    assert loudness(np.zeros(0, dtype=np.float32)) == 0.0
+    quiet = loudness(np.full(100, 0.003, dtype=np.float32))  # about -50 dB
+    medium = loudness(np.full(100, 0.03, dtype=np.float32))  # about -30 dB
+    assert 0.0 < quiet < medium < 1.0
 
 
 def test_microphone_failure_raises_recorder_error():
