@@ -41,14 +41,13 @@ straight through it.
 
 ### The tray icon
 
-A round microphone icon sits by the clock (it may be hidden under the **^** arrow; you can drag
-it next to the clock to keep it visible).
+A microphone icon sits by the clock (it may be hidden under the **^** arrow; you can drag it next
+to the clock to keep it visible).
 
 | Colour | Meaning |
 |---|---|
-| Blue | Ready (hover over it to check the speech model has finished loading) |
+| Black | Not listening: ready or transcribing (hover over it to see which, and whether the speech model has finished loading) |
 | Red | Listening |
-| Amber | Transcribing |
 
 Right-click it to see the current status, to pick the **Language** you will speak, or to **Quit**.
 

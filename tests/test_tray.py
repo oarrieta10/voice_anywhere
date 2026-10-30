@@ -93,4 +93,12 @@ def test_icons_are_drawn_for_each_state():
     for colour in tray.STATE_COLOURS.values():
         img = make_icon(colour)
         assert img.size == (64, 64)
-        assert img.getpixel((5, 32))[:3] == colour
+        assert img.getpixel((0, 0))[3] == 0  # transparent background
+        assert img.getpixel((32, 56)) == (*colour, 255)  # the stand
+
+
+def test_icon_is_red_only_while_listening():
+    assert tray.STATE_COLOURS["idle"] == (0, 0, 0)
+    assert tray.STATE_COLOURS["transcribing"] == (0, 0, 0)
+    red, green, blue = tray.STATE_COLOURS["listening"]
+    assert red > 200 and green < 60 and blue < 60

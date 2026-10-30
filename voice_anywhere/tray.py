@@ -17,25 +17,38 @@ LANGUAGES = [("English", "en"), ("Spanish", "es"), ("Detect English or Spanish",
 LANGUAGE_SHORT = {"en": "English", "es": "Spanish", "en,es": "English or Spanish",
                   "auto": "any language"}
 
-STATE_COLOURS = {"idle": (52, 101, 164), "listening": (192, 57, 43),
-                 "transcribing": (183, 121, 31)}
+STATE_COLOURS = {"idle": (0, 0, 0), "listening": (220, 30, 30), "transcribing": (0, 0, 0)}
 STATE_TEXT = {"listening": "Listening…  (press the hotkey to stop, Esc to cancel)",
               "transcribing": "Transcribing…"}
 REFRESH_SECONDS = 2
 
 
 def make_icon(colour) -> Image.Image:
-    """A round icon with a simple white microphone."""
-    size = 64
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    """An outline microphone in one colour on a transparent background.
+
+    Drawn large and shrunk, for smooth edges. Lines are thick so it stays clear at the
+    16-24 pixels Windows uses in the tray.
+    """
+    size, k = 64, 8  # coordinates below are on a 64 x 64 grid, drawn k times larger
+    line = 5 * k
+    img = Image.new("RGBA", (size * k, size * k), (*colour, 0))
     d = ImageDraw.Draw(img)
-    d.ellipse((2, 2, size - 2, size - 2), fill=colour)
-    white = (255, 255, 255)
-    d.rounded_rectangle((24, 12, 40, 38), radius=8, fill=white)  # microphone head
-    d.arc((17, 22, 47, 46), start=0, end=180, fill=white, width=4)  # holder
-    d.line((32, 46, 32, 52), fill=white, width=4)  # stand
-    d.line((23, 53, 41, 53), fill=white, width=4)  # base
-    return img
+    solid = (*colour, 255)
+
+    def bar(x1, y1, x2, y2):
+        """A straight line with rounded ends."""
+        half = line / 2
+        d.rounded_rectangle((x1 * k - half, y1 * k - half, x2 * k + half, y2 * k + half),
+                            radius=half, fill=solid)
+
+    d.rounded_rectangle((21 * k, 2 * k, 43 * k, 42 * k), radius=11 * k, outline=solid,
+                        width=line)  # microphone head
+    d.arc((11 * k, 12 * k, 53 * k, 53 * k), start=0, end=180, fill=solid, width=line)  # cradle
+    bar(8, 33, 15, 33)  # left end of the cradle
+    bar(49, 33, 56, 33)  # right end
+    bar(32, 51, 32, 59)  # stand
+    bar(20, 59, 44, 59)  # base
+    return img.resize((size, size), Image.LANCZOS)
 
 
 class Tray:

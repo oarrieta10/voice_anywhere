@@ -55,5 +55,5 @@ Write-Output "Created $path"
 Write-Output "Voice Anywhere will now start each time you sign in to Windows."
 
 Start-Process -FilePath $path
-Write-Output "Started it now: look for the round microphone icon by the clock"
+Write-Output "Started it now: look for the black microphone icon by the clock"
 Write-Output "(it may be hidden under the ^ arrow)."
