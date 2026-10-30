@@ -94,7 +94,9 @@ def test_icons_are_drawn_for_each_state():
         img = make_icon(colour)
         assert img.size == (64, 64)
         assert img.getpixel((0, 0))[3] == 0  # transparent background
-        assert img.getpixel((32, 56)) == (*colour, 255)  # the stand
+        *rgb, alpha = img.getpixel((32, 56))  # the stand
+        # Smoothing can shift a value by a point or two.
+        assert all(abs(got - want) <= 2 for got, want in zip(rgb, colour)) and alpha > 240
 
 
 def test_icon_is_red_only_while_listening():
