@@ -13,10 +13,13 @@ change or depend on Kuadrant.
 
 ## Agreed design
 - **Tray app** (`pystray` + `Pillow`) that starts with Windows and lives by the clock. Menu: status, Language (English / Spanish /
-  detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Quit.
+  detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Shortcut, Chime, Quit.
 - **Hotkey: press once to start, press again to stop** (toggle, not hold-to-talk). Default `Ctrl+Alt+Space`.
   `Esc` while recording cancels and inserts nothing. Register the hotkey with the Win32 `RegisterHotKey`
-  function through `ctypes` (no extra package).
+  function through `ctypes` (no extra package). The tray's Shortcut menu offers F9, Caps Lock and
+  Ctrl+Shift, remembered in `settings.json`. Caps Lock and a Ctrl+Shift tap cannot work through
+  `RegisterHotKey`, so they use a `WH_KEYBOARD_LL` keyboard hook, installed only while one is chosen.
+  The hook must never store or log keys.
 - **Recording** from the default microphone with `sounddevice`, 16 kHz mono, kept in memory only
   (never written to disk). A maximum length stops runaway recordings.
 - **Feedback:** a small floating black pill in the bottom-right corner above the taskbar (live sound
@@ -54,7 +57,7 @@ change or depend on Kuadrant.
 |---|---|---|
 | `VOICE_WHISPER_MODEL` | Whisper model size or folder | `small` |
 | `VOICE_WHISPER_LANG` | Language code, `auto`, or a list such as `en,es` (detect, choosing only from those) | `en` |
-| `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space` | `ctrl+alt+space` |
+| `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space`; the tray's Shortcut menu wins | `ctrl+alt+space` |
 | `VOICE_CLEANUP` | Rule-based text cleanup (`voice_anywhere/cleanup.py`), `on` or `off` | `on` |
 | `VOICE_CHIME` | Chime when listening starts, `on` or `off`; the tray's Chime item wins | `on` |
 

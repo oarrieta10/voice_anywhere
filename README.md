@@ -50,8 +50,22 @@ to the clock to keep it visible).
 | Black | Not listening: ready or transcribing (hover over it to see which, and whether the speech model has finished loading) |
 | Red | Listening |
 
-Right-click it to see the current status, to pick the **Language** you will speak, to turn the
-**Chime** on or off (a tick means on, and your choice is remembered), or to **Quit**.
+Right-click it to see the current status, to pick the **Language** you will speak, to change the
+**Shortcut**, to turn the **Chime** on or off (a tick means on), or to **Quit**. Your choices are
+remembered.
+
+The **Shortcut** menu has:
+- **F9**: press once to start, again to stop.
+- **Caps Lock**: the same, but the key no longer switches capitals on while this is chosen.
+  If capitals are on when you choose it, they are switched off first.
+- **Ctrl+Shift**: tap both keys together and let go. Shortcuts such as Ctrl+Shift+V keep working,
+  and holding the two keys for more than half a second does nothing.
+
+A new shortcut works straight away. If another program already uses it, you get a message and the
+old one stays. It cannot be changed in the middle of a dictation.
+
+Caps Lock and Ctrl+Shift use a Windows keyboard hook, which sees every key press while one of them
+is chosen. The app only compares each press with those keys: nothing is stored or logged.
 
 The **Language** menu has:
 - **English** or **Spanish**: the quickest, every dictation is in that language;
@@ -119,9 +133,9 @@ setx VOICE_WHISPER_LANG "es"
 So that the chime is not typed as a stray word, the sound heard while it plays (under half a
 second) is thrown away. With the chime off, nothing is thrown away.
 
-A language picked in the tray's **Language** menu wins over `VOICE_WHISPER_LANG`. The choice is
-saved in `%LOCALAPPDATA%\voice-anywhere\settings.json`; delete that file to go back to using
-the variable.
+A language picked in the tray's **Language** menu wins over `VOICE_WHISPER_LANG`, and a shortcut
+picked in the **Shortcut** menu wins over `VOICE_HOTKEY`. The choices are saved in
+`%LOCALAPPDATA%\voice-anywhere\settings.json`; delete that file to go back to using the variables.
 
 **Dictating in English and Spanish:** `setx VOICE_WHISPER_LANG "en,es"` (or the tray's
 "Detect English or Spanish") makes each dictation
@@ -184,7 +198,7 @@ How the code is laid out (`voice_anywhere\`):
 |---|---|
 | `__main__.py` | Start-up: log file, single-instance check, error message boxes |
 | `app.py` | The controller: hotkey -> record -> transcribe -> paste |
-| `hotkey.py` | The global hotkey and Esc, through the Windows `RegisterHotKey` function |
+| `hotkey.py` | The global hotkey and Esc, through the Windows `RegisterHotKey` function; a keyboard hook for Caps Lock and Ctrl+Shift |
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |

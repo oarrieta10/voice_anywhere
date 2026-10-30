@@ -9,8 +9,12 @@ import threading
 from PIL import Image, ImageDraw
 
 from . import chime, settings, transcriber
+from .hotkey import HotkeyError
 
 log = logging.getLogger("voice_anywhere")
+
+# The tray's Shortcut menu: (menu text, hotkey).
+SHORTCUTS = [("F9", "f9"), ("Caps Lock", "capslock"), ("Ctrl+Shift", "ctrl+shift")]
 
 # The tray's Language menu: (menu text, VOICE_WHISPER_LANG-style setting).
 LANGUAGES = [("English", "en"), ("Spanish", "es"), ("Detect English or Spanish", "en,es")]
@@ -57,6 +61,7 @@ class Tray:
         self.overlay = overlay
         self.hotkey_name = ""
         self.on_quit = None
+        self.on_hotkey_change = None  # set by run(); raises HotkeyError if the key cannot be used
         self.state = "idle"
         self._images = {s: make_icon(c) for s, c in STATE_COLOURS.items()}
         self._stopped = threading.Event()
@@ -88,7 +93,11 @@ class Tray:
             return "Problem: " + info["error"]
         if not info["loaded"]:
             return f"Loading speech model ({info['model']})…"
-        return f"Ready: press {self.hotkey_name.title()} to dictate ({self.language_name()})"
+        return f"Ready: press {self.hotkey_label()} to dictate ({self.language_name()})"
+
+    def hotkey_label(self) -> str:
+        labels = {code: label for label, code in SHORTCUTS}
+        return labels.get(self.hotkey_name, self.hotkey_name.title())
 
     def language_name(self) -> str:
         code = transcriber.language_setting_text()
@@ -99,6 +108,19 @@ class Tray:
         transcriber.set_language(code)
         settings.save(language=code)
         log.info("Language set to %s", code)
+        self._refresh()
+
+    def choose_shortcut(self, code: str) -> None:
+        """Called from the Shortcut menu: use this key now and remember it."""
+        try:
+            self.on_hotkey_change(code)
+        except HotkeyError as exc:  # the old shortcut stays in place
+            log.warning("Could not change the shortcut: %s", exc)
+            self.notify(str(exc), "error")
+            return
+        self.hotkey_name = code
+        settings.save(hotkey=code)
+        log.info("Shortcut set to %s", code)
         self._refresh()
 
     def toggle_chime(self, icon=None, item=None) -> None:
@@ -140,11 +162,18 @@ class Tray:
                 label, lambda icon, item: self.choose_language(code), radio=True,
                 checked=lambda item: transcriber.language_setting_text() == code)
 
+        def shortcut_item(label, code):
+            return pystray.MenuItem(
+                label, lambda icon, item: self.choose_shortcut(code), radio=True,
+                checked=lambda item: self.hotkey_name == code)
+
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: self.status_text(), None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Language", pystray.Menu(
                 *(language_item(label, code) for label, code in LANGUAGES))),
+            pystray.MenuItem("Shortcut", pystray.Menu(
+                *(shortcut_item(label, code) for label, code in SHORTCUTS))),
             pystray.MenuItem("Chime", self.toggle_chime, checked=lambda item: chime.enabled()),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self._quit),

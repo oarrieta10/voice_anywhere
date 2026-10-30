@@ -99,6 +99,58 @@ def test_chime_item_flips_and_remembers(monkeypatch, tmp_path):
     assert settings.load() == {"chime": True}
 
 
+def test_choosing_a_shortcut_applies_and_remembers_it(monkeypatch, tmp_path):
+    from voice_anywhere import settings
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(transcriber, "status",
+                        lambda: {"available": True, "model": "small", "loaded": True, "error": None})
+    t = Tray(FakeOverlay())
+    t.hotkey_name = "f9"
+    changes = []
+    t.on_hotkey_change = changes.append
+    t.choose_shortcut("capslock")
+    assert changes == ["capslock"]
+    assert t.hotkey_name == "capslock"
+    assert settings.load() == {"hotkey": "capslock"}
+    assert t.status_text().startswith("Ready: press Caps Lock to dictate")
+
+
+def test_shortcut_that_fails_changes_nothing_and_says_why(monkeypatch, tmp_path):
+    from voice_anywhere import settings
+    from voice_anywhere.hotkey import HotkeyError
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    t = Tray(FakeOverlay())
+    t.hotkey_name = "f9"
+
+    class FakeIcon:
+        notes = []
+
+        def notify(self, message, title):
+            self.notes.append(message)
+
+        def update_menu(self):
+            pass
+
+    def taken(code):
+        raise HotkeyError("Another program may already be using it.")
+
+    t.icon = FakeIcon()
+    t.on_hotkey_change = taken
+    t.choose_shortcut("ctrl+shift")
+    assert t.hotkey_name == "f9"
+    assert settings.load() == {}
+    assert FakeIcon.notes == ["Another program may already be using it."]
+
+
+def test_every_menu_shortcut_is_a_usable_hotkey():
+    from voice_anywhere.hotkey import check_hotkey
+
+    for _, code in tray.SHORTCUTS:
+        check_hotkey(code)
+
+
 def test_every_menu_language_has_a_short_name():
     for _, code in tray.LANGUAGES:
         assert code in tray.LANGUAGE_SHORT

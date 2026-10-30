@@ -11,7 +11,7 @@ import logging
 import threading
 
 from . import chime, cleanup, transcriber
-from .hotkey import HotkeyListener
+from .hotkey import HotkeyError, HotkeyListener
 from .inserter import Inserter
 from .recorder import SAMPLE_RATE, Recorder
 
@@ -151,13 +151,32 @@ def run() -> int:
                         skip_seconds=chime.skip_seconds,
                         on_ready=lambda: dictation.mic_ready())
     dictation = Dictation(recorder, Inserter(), transcriber.transcribe, tray, chime=chime.play)
+
+    def start_listener(hotkey):
+        started = HotkeyListener(on_toggle=dictation.toggle, on_cancel=dictation.cancel,
+                                 hotkey=hotkey)
+        started.start()
+        return started
+
     try:
-        listener = HotkeyListener(on_toggle=dictation.toggle, on_cancel=dictation.cancel)
-        listener.start()
+        try:
+            listener = start_listener(saved.get("hotkey"))
+        except HotkeyError as exc:
+            if not saved.get("hotkey"):
+                raise
+            log.warning("Saved shortcut not available, using the default: %s", exc)
+            listener = start_listener(None)
     except Exception as exc:
         raise SystemExit(str(exc))
     dictation.hotkey = listener
     tray.hotkey_name = listener.hotkey
+
+    def change_hotkey(hotkey):
+        if dictation.state != IDLE:  # the key that stops the recording must not change
+            raise HotkeyError("Finish the dictation first, then change the shortcut.")
+        listener.change(hotkey)
+
+    tray.on_hotkey_change = change_hotkey
 
     def quit_app():
         listener.stop()
