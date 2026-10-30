@@ -13,9 +13,6 @@ from .hotkey import HotkeyError
 
 log = logging.getLogger("voice_anywhere")
 
-# The tray's Shortcut menu: (menu text, hotkey).
-SHORTCUTS = [("F9", "f9"), ("Caps Lock", "capslock"), ("Ctrl+Shift", "ctrl+shift")]
-
 # The tray's Language menu: (menu text, VOICE_WHISPER_LANG-style setting).
 LANGUAGES = [("English", "en"), ("Spanish", "es"), ("Detect English or Spanish", "en,es")]
 LANGUAGE_SHORT = {"en": "English", "es": "Spanish", "en,es": "English or Spanish",
@@ -96,12 +93,8 @@ class Tray:
             return f"Loading speech model ({info['model']})…"
         return f"Ready: press {self.hotkey_label()} to dictate ({self.language_name()})"
 
-    def custom_shortcut(self) -> bool:
-        return self.hotkey_name not in [code for _, code in SHORTCUTS]
-
     def hotkey_label(self) -> str:
-        labels = {code: label for label, code in SHORTCUTS}
-        return labels.get(self.hotkey_name, self.hotkey_name.title())
+        return "Caps Lock" if self.hotkey_name == "capslock" else self.hotkey_name.title()
 
     def language_name(self) -> str:
         code = transcriber.language_setting_text()
@@ -115,7 +108,7 @@ class Tray:
         self._refresh()
 
     def choose_shortcut(self, code: str) -> None:
-        """Called from the Shortcut menu: use this key now and remember it."""
+        """A new shortcut was recorded: use it now and remember it."""
         try:
             self.on_hotkey_change(code)
         except HotkeyError as exc:  # the old shortcut stays in place
@@ -182,21 +175,14 @@ class Tray:
                 label, lambda icon, item: self.choose_language(code), radio=True,
                 checked=lambda item: transcriber.language_setting_text() == code)
 
-        def shortcut_item(label, code):
-            return pystray.MenuItem(
-                label, lambda icon, item: self.choose_shortcut(code), radio=True,
-                checked=lambda item: self.hotkey_name == code)
-
         menu = pystray.Menu(
             pystray.MenuItem(lambda item: self.status_text(), None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Language", pystray.Menu(
                 *(language_item(label, code) for label, code in LANGUAGES))),
             pystray.MenuItem("Shortcut", pystray.Menu(
-                *(shortcut_item(label, code) for label, code in SHORTCUTS),
-                pystray.MenuItem(lambda item: self.hotkey_label(), None, radio=True,
-                                 checked=lambda item: True, visible=lambda item: self.custom_shortcut()),
-                pystray.Menu.SEPARATOR,
+                pystray.MenuItem(lambda item: "Current: " + self.hotkey_label(), None,
+                                 enabled=False),
                 pystray.MenuItem("Record new shortcut…", self.record_shortcut))),
             pystray.MenuItem("Chime", self.toggle_chime, checked=lambda item: chime.enabled()),
             pystray.Menu.SEPARATOR,

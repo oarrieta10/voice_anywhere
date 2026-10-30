@@ -54,22 +54,19 @@ Right-click it to see the current status, to pick the **Language** you will spea
 **Shortcut**, to turn the **Chime** on or off (a tick means on), or to **Quit**. Your choices are
 remembered.
 
-The **Shortcut** menu has:
-- **F9**: press once to start, again to stop.
-- **Caps Lock**: the same, but the key no longer switches capitals on while this is chosen.
-  If capitals are on when you choose it, they are switched off first.
-- **Ctrl+Shift**: tap both keys together and let go. Shortcuts such as Ctrl+Shift+V keep working,
-  and holding the two keys for more than half a second does nothing.
-
-- **Record new shortcut...**: the pill says "Press your shortcut...". Press the keys you want and
-  let go. Your shortcut then appears in the menu with a tick for as long as it is the one in use.
-  Press Esc to cancel, or wait 10 seconds. While recording, keys do not reach your other programs.
+The **Shortcut** menu shows the current shortcut and has **Record new shortcut...**: the pill says
+"Press your shortcut...", you press the keys you want and let go. Press Esc to cancel, or wait
+10 seconds. While recording, keys do not reach your other programs.
 
 What you can record:
-- a function key, Pause, Insert or Caps Lock on its own;
+- a function key, Pause or Insert on its own: press once to start, again to stop;
+- Caps Lock on its own: the key then no longer switches capitals on, and if capitals are on when
+  you record it, they are switched off first;
 - Ctrl, Alt or Win (with or without Shift) plus a letter, digit, function key, Space, Enter, Tab,
   Home, End, Page Up, Page Down, Delete or an arrow;
-- two or more of Ctrl, Alt, Shift and Win with nothing else, used as a quick tap like Ctrl+Shift.
+- two or more of Ctrl, Alt, Shift and Win with nothing else, such as Ctrl+Shift: tap them together
+  and let go. Shortcuts such as Ctrl+Shift+V keep working, and holding the keys for more than half
+  a second does nothing.
 
 Letters, Space and the like on their own, or with just Shift, are refused because you need them for
 typing. Punctuation and number-pad keys cannot be used.
@@ -150,7 +147,7 @@ So that the chime is not typed as a stray word, the sound heard while it plays (
 second) is thrown away. With the chime off, nothing is thrown away.
 
 A language picked in the tray's **Language** menu wins over `VOICE_WHISPER_LANG`, and a shortcut
-picked in the **Shortcut** menu wins over `VOICE_HOTKEY`. The choices are saved in
+recorded in the **Shortcut** menu wins over `VOICE_HOTKEY`. The choices are saved in
 `%LOCALAPPDATA%\voice-anywhere\settings.json`; delete that file to go back to using the variables.
 
 **Dictating in English and Spanish:** `setx VOICE_WHISPER_LANG "en,es"` (or the tray's

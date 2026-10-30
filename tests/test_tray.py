@@ -158,7 +158,7 @@ def test_recorded_shortcut_is_applied_and_remembered(monkeypatch, tmp_path):
     t.on_hotkey_change = lambda code: None
     t.record_shortcut()
     assert overlay.log == ["prompt", "hide"]
-    assert t.hotkey_name == "ctrl+alt+d" and t.custom_shortcut()
+    assert t.hotkey_name == "ctrl+alt+d"
     assert t.hotkey_label() == "Ctrl+Alt+D"
     assert settings.load() == {"hotkey": "ctrl+alt+d"}
 
@@ -173,7 +173,7 @@ def test_refused_shortcut_changes_nothing_and_says_why(monkeypatch, tmp_path):
     t.notify = lambda message, kind="error": notes.append(message)
     t.on_record_shortcut = lambda done: done(None, "D on its own is needed for typing.")
     t.record_shortcut()
-    assert t.hotkey_name == "f9" and not t.custom_shortcut()
+    assert t.hotkey_name == "f9"
     assert settings.load() == {}
     assert notes == ["D on its own is needed for typing."]
 
@@ -194,11 +194,11 @@ def test_recording_refused_during_dictation_hides_the_prompt():
     assert overlay.log == ["prompt", "hide"] and notes == ["Finish the dictation first"]
 
 
-def test_every_menu_shortcut_is_a_usable_hotkey():
-    from voice_anywhere.hotkey import check_hotkey
-
-    for _, code in tray.SHORTCUTS:
-        check_hotkey(code)
+def test_shortcut_names_read_well():
+    t = Tray(FakeOverlay())
+    for code, label in [("f9", "F9"), ("capslock", "Caps Lock"), ("ctrl+shift", "Ctrl+Shift")]:
+        t.hotkey_name = code
+        assert t.hotkey_label() == label
 
 
 def test_every_menu_language_has_a_short_name():

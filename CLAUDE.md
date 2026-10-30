@@ -16,8 +16,8 @@ change or depend on Kuadrant.
   detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Shortcut, Chime, Quit.
 - **Hotkey: press once to start, press again to stop** (toggle, not hold-to-talk). Default `Ctrl+Alt+Space`.
   `Esc` while recording cancels and inserts nothing. Register the hotkey with the Win32 `RegisterHotKey`
-  function through `ctypes` (no extra package). The tray's Shortcut menu offers F9, Caps Lock,
-  Ctrl+Shift and "Record new shortcut...", remembered in `settings.json`. Caps Lock and tap shortcuts
+  function through `ctypes` (no extra package). The tray's Shortcut menu shows the current shortcut
+  and "Record new shortcut...", remembered in `settings.json`. Caps Lock and tap shortcuts
   (two or more modifiers alone) cannot work through `RegisterHotKey`, so they use a `WH_KEYBOARD_LL`
   keyboard hook, installed only while one is chosen or a shortcut is being recorded.
   The hook must never store or log keys; only the one recorded shortcut is saved.
@@ -58,7 +58,7 @@ change or depend on Kuadrant.
 |---|---|---|
 | `VOICE_WHISPER_MODEL` | Whisper model size or folder | `small` |
 | `VOICE_WHISPER_LANG` | Language code, `auto`, or a list such as `en,es` (detect, choosing only from those) | `en` |
-| `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space`; the tray's Shortcut menu wins | `ctrl+alt+space` |
+| `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space`; a shortcut recorded in the tray wins | `ctrl+alt+space` |
 | `VOICE_CLEANUP` | Rule-based text cleanup (`voice_anywhere/cleanup.py`), `on` or `off` | `on` |
 | `VOICE_CHIME` | Chime when listening starts, `on` or `off`; the tray's Chime item wins | `on` |
 
