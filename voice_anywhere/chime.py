@@ -1,6 +1,6 @@
 """The chime that plays when the microphone is live. Fully offline.
 
-Plays sounds/pull-out-551.wav with Windows' built-in sound player, which always uses the
+Plays sounds/intuition-561.wav with Windows' built-in sound player, which always uses the
 current default speakers. The first SKIP_SECONDS of audio are thrown away (see Recorder)
 so that the chime, heard through speakers, is not transcribed. A chime that cannot play
 is only logged: dictation carries on without it.
@@ -14,7 +14,7 @@ from pathlib import Path
 
 log = logging.getLogger("voice_anywhere")
 
-SOUND_FILE = Path(__file__).resolve().parent.parent / "sounds" / "pull-out-551.wav"
+SOUND_FILE = Path(__file__).resolve().parent.parent / "sounds" / "intuition-561.wav"
 SECONDS = 0.38  # length of the sound
 SKIP_SECONDS = SECONDS + 0.05
 _choice = None  # set from the tray menu; None means use VOICE_CHIME

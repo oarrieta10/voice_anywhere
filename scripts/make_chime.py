@@ -1,4 +1,4 @@
-"""Turns sounds/pull-out-551.mp3 into sounds/pull-out-551.wav, the file the app plays.
+"""Turns sounds/intuition-561.ogg into sounds/intuition-561.wav, the file the app plays.
 
 Windows' built-in sound player only reads WAV files, so run this again if the chime changes:
     .venv\\Scripts\\python.exe -m scripts.make_chime
@@ -10,8 +10,8 @@ import av
 import numpy as np
 
 SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
-SOURCE = SOUNDS / "pull-out-551.mp3"
-TARGET = SOUNDS / "pull-out-551.wav"
+SOURCE = SOUNDS / "intuition-561.ogg"
+TARGET = SOUNDS / "intuition-561.wav"
 
 
 def main():

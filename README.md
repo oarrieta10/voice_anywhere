@@ -188,7 +188,7 @@ How the code is laid out (`voice_anywhere\`):
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
-| `chime.py` | The chime when listening starts (`sounds\pull-out-551.wav`) |
+| `chime.py` | The chime when listening starts (`sounds\intuition-561.wav`) |
 | `settings.py` | Remembers choices made in the tray menu (the language) |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |
@@ -197,4 +197,4 @@ How the code is laid out (`voice_anywhere\`):
 
 `scripts\make_shortcut.ps1` makes the Startup shortcut; `scripts\make_icon.py` redraws
 `voice-anywhere.ico` (`.venv\Scripts\python.exe -m scripts.make_icon`); `scripts\make_chime.py`
-turns the chime MP3 into the WAV file the app plays (`.venv\Scripts\python.exe -m scripts.make_chime`).
+turns the chime's source sound into the WAV file the app plays (`.venv\Scripts\python.exe -m scripts.make_chime`).

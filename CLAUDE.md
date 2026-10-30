@@ -22,7 +22,7 @@ change or depend on Kuadrant.
 - **Feedback:** a small floating black pill in the bottom-right corner above the taskbar (live sound
   bars while listening, a calm dot wave while transcribing, fades in and out), plus
   the tray icon changing state. It must not take keyboard focus away from the target window.
-  The pill and a chime (`voice_anywhere/chime.py`, `sounds/pull-out-551.wav`, played with the
+  The pill and a chime (`voice_anywhere/chime.py`, `sounds/intuition-561.wav`, played with the
   standard library's `winsound`) appear together when the microphone delivers its first sound:
   a Bluetooth headset takes about 0.8 s to switch into call mode, and sound cannot play during
   that switch. The sound heard during the chime is thrown away so it is not transcribed. The
