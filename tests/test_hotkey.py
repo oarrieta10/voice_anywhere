@@ -7,8 +7,8 @@ from voice_anywhere import hotkey
 from voice_anywhere.hotkey import (CANCEL_ID, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT,
                                    MOD_WIN, OUR_KEYPRESS, TAP_SECONDS, TOGGLE_ID, VK_CAPITAL,
                                    VK_ESCAPE, WH_KEYBOARD_LL, WM_ESC_OFF, WM_ESC_ON, WM_HOTKEY,
-                                   WM_QUIT, ChordTap, HotkeyError, HotkeyListener, check_hotkey,
-                                   parse_hotkey)
+                                   WM_QUIT, ChordTap, HotkeyError, HotkeyListener,
+                                   ShortcutRecorder, check_hotkey, parse_hotkey)
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -223,7 +223,7 @@ def test_ctrl_shift_tap_reaches_the_toggle_and_is_never_held_back():
     listener.stop()
 
 
-VK_LCTRL, VK_LSHIFT, VK_RCTRL, VK_RSHIFT = 0xA2, 0xA0, 0xA3, 0xA1
+VK_LCTRL, VK_LSHIFT, VK_RCTRL, VK_RSHIFT, VK_LALT, VK_WIN = 0xA2, 0xA0, 0xA3, 0xA1, 0xA4, 0x5B
 
 
 class Clock:
@@ -242,27 +242,27 @@ TAP = ((VK_LCTRL, True), (VK_LSHIFT, True), (VK_LSHIFT, False), (VK_LCTRL, False
 
 
 def test_chord_tap_in_either_order_and_with_right_hand_keys():
-    tap = ChordTap(Clock())
+    tap = ChordTap(clock=Clock())
     assert play(tap, *TAP) == 1
     assert play(tap, (VK_RSHIFT, True), (VK_RCTRL, True), (VK_RSHIFT, False), (VK_RCTRL, False)) == 1
 
 
 def test_chord_tap_is_not_fooled_by_shortcuts():
-    tap = ChordTap(Clock())
+    tap = ChordTap(clock=Clock())
     assert play(tap, (VK_LCTRL, True), (VK_LSHIFT, True), (ord("V"), True), (ord("V"), False),
                 (VK_LSHIFT, False), (VK_LCTRL, False)) == 0
     assert play(tap, *TAP) == 1  # and the next real tap still works
 
 
 def test_chord_tap_ignores_a_single_modifier():
-    tap = ChordTap(Clock())
+    tap = ChordTap(clock=Clock())
     assert play(tap, (VK_LCTRL, True), (ord("C"), True), (ord("C"), False), (VK_LCTRL, False)) == 0
     assert play(tap, (VK_LSHIFT, True), (VK_LSHIFT, False)) == 0
 
 
 def test_chord_tap_held_too_long_does_not_count():
     clock = Clock()
-    tap = ChordTap(clock)
+    tap = ChordTap(clock=clock)
     play(tap, (VK_LCTRL, True), (VK_LSHIFT, True))
     clock.now = TAP_SECONDS + 0.1
     assert play(tap, (VK_LSHIFT, False), (VK_LCTRL, False)) == 0
@@ -270,7 +270,7 @@ def test_chord_tap_held_too_long_does_not_count():
 
 def test_key_repeat_does_not_restart_the_tap_timer():
     clock = Clock()
-    tap = ChordTap(clock)
+    tap = ChordTap(clock=clock)
     play(tap, (VK_LCTRL, True), (VK_LSHIFT, True))
     clock.now = TAP_SECONDS + 0.1
     play(tap, (VK_LSHIFT, True))  # Windows repeats a held key
@@ -280,6 +280,110 @@ def test_key_repeat_does_not_restart_the_tap_timer():
 @pytest.mark.parametrize("text", ["capslock", "Caps Lock", "ctrl+shift", "Ctrl + Shift"])
 def test_hook_hotkeys_are_accepted(text):
     check_hotkey(text)
+
+
+def test_tap_works_for_other_modifier_pairs():
+    tap = ChordTap(["ctrl", "alt"], clock=Clock())
+    assert play(tap, (VK_LCTRL, True), (VK_LALT, True), (VK_LALT, False), (VK_LCTRL, False)) == 1
+    assert play(tap, *TAP) == 0  # Shift is not part of this one
+
+
+def press(recorder, *keys):
+    """Hold the keys down in order, then let go in reverse. True if that finished recording."""
+    results = [recorder.key(vk, True) for vk in keys]
+    results += [recorder.key(vk, False) for vk in reversed(keys)]
+    assert not any(results[:-1])  # never finishes while a key is still held
+    return results[-1]
+
+
+@pytest.mark.parametrize("keys, expected", [
+    ((VK_LCTRL, VK_LALT, ord("D")), "ctrl+alt+d"),
+    ((VK_LALT, VK_LCTRL, ord("D")), "ctrl+alt+d"),  # order of the modifiers does not matter
+    ((VK_RCTRL, VK_LSHIFT, 0x77), "ctrl+shift+f8"),
+    ((0x77,), "f8"),
+    ((0x13,), "pause"),
+    ((VK_CAPITAL,), "capslock"),
+    ((VK_LSHIFT, 0x78), "shift+f9"),
+    ((VK_LCTRL, ord("D")), "ctrl+d"),
+    ((VK_LCTRL, VK_LALT), "ctrl+alt"),
+    ((VK_LCTRL, VK_WIN), "ctrl+win"),
+])
+def test_recorder_accepts(keys, expected):
+    recorder = ShortcutRecorder()
+    assert press(recorder, *keys)
+    assert recorder.outcome == (expected, None)
+    check_hotkey(expected)
+
+
+@pytest.mark.parametrize("keys, reason", [
+    ((ord("D"),), "needed for typing"),
+    ((0x20,), "needed for typing"),
+    ((0x09,), "needed for typing"),
+    ((VK_LSHIFT, ord("D")), "needed for typing"),
+    ((0xBC,), "cannot be used"),  # comma
+])
+def test_recorder_refuses(keys, reason):
+    recorder = ShortcutRecorder()
+    assert press(recorder, *keys)
+    hotkey, message = recorder.outcome
+    assert hotkey is None and reason in message
+
+
+def test_recorder_esc_cancels_quietly():
+    recorder = ShortcutRecorder()
+    assert press(recorder, VK_ESCAPE)
+    assert recorder.outcome == (None, None)
+
+
+def test_recorder_keeps_waiting_after_one_modifier():
+    recorder = ShortcutRecorder()
+    assert not press(recorder, VK_LCTRL)
+    assert recorder.outcome is None
+    assert press(recorder, VK_LCTRL, ord("D"))
+    assert recorder.outcome == ("ctrl+d", None)
+
+
+def test_recording_holds_keys_back_and_reports_the_result():
+    user32, events, results = LiveUser32(), [], []
+    listener = live_listener(user32, events)
+    listener.record(lambda hotkey, message: results.append((hotkey, message)))
+    assert wait_for(lambda: user32.hook == WH_KEYBOARD_LL)
+    for vk, down in [(VK_LCTRL, True), (ord("D"), True), (ord("D"), False), (VK_LCTRL, False)]:
+        assert listener._key_event(vk, down)
+    assert wait_for(lambda: results == [("ctrl+d", None)])
+    assert wait_for(lambda: user32.hook is None)  # stops watching straight away
+    assert not listener._key_event(ord("D"), True)
+    assert listener.hotkey == "f9" and events == []
+    listener.stop()
+
+
+def test_recording_with_a_hook_hotkey_keeps_the_hook_afterwards():
+    user32, events, results = LiveUser32(), [], []
+    listener = live_listener(user32, events, hotkey="ctrl+shift")
+    listener.record(lambda hotkey, message: results.append(hotkey))
+    assert listener._key_event(VK_ESCAPE, True) and listener._key_event(VK_ESCAPE, False)
+    assert wait_for(lambda: results == [None])
+    assert user32.hook == WH_KEYBOARD_LL
+    listener.stop()
+
+
+def test_recording_gives_up_after_the_time_limit(monkeypatch):
+    monkeypatch.setattr(hotkey, "RECORD_SECONDS", 0.01)
+    user32, results = LiveUser32(), []
+    listener = live_listener(user32, [])
+    listener.record(lambda hotkey, message: results.append((hotkey, message)))
+    assert wait_for(lambda: results == [(None, None)])
+    listener.stop()
+
+
+def test_only_one_recording_at_a_time(monkeypatch):
+    user32 = LiveUser32()
+    listener = live_listener(user32, [])
+    listener.record(lambda hotkey, message: None)
+    with pytest.raises(HotkeyError, match="Already"):
+        listener.record(lambda hotkey, message: None)
+    listener._record_timer.cancel()
+    listener.stop()
 
 
 def test_enable_and_disable_cancel_post_to_listener_thread():

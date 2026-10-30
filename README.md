@@ -61,11 +61,27 @@ The **Shortcut** menu has:
 - **Ctrl+Shift**: tap both keys together and let go. Shortcuts such as Ctrl+Shift+V keep working,
   and holding the two keys for more than half a second does nothing.
 
-A new shortcut works straight away. If another program already uses it, you get a message and the
-old one stays. It cannot be changed in the middle of a dictation.
+- **Record new shortcut...**: the pill says "Press your shortcut...". Press the keys you want and
+  let go. Your shortcut then appears in the menu with a tick for as long as it is the one in use.
+  Press Esc to cancel, or wait 10 seconds. While recording, keys do not reach your other programs.
 
-Caps Lock and Ctrl+Shift use a Windows keyboard hook, which sees every key press while one of them
-is chosen. The app only compares each press with those keys: nothing is stored or logged.
+What you can record:
+- a function key, Pause, Insert or Caps Lock on its own;
+- Ctrl, Alt or Win (with or without Shift) plus a letter, digit, function key, Space, Enter, Tab,
+  Home, End, Page Up, Page Down, Delete or an arrow;
+- two or more of Ctrl, Alt, Shift and Win with nothing else, used as a quick tap like Ctrl+Shift.
+
+Letters, Space and the like on their own, or with just Shift, are refused because you need them for
+typing. Punctuation and number-pad keys cannot be used.
+
+A new shortcut works straight away. If another program already uses it, you get a message and the
+old one stays. Windows keeps some combinations for itself (such as Ctrl+Alt+Delete or Win+L): the
+app cannot always detect those, so such a shortcut may simply not work. A shortcut cannot be changed
+in the middle of a dictation.
+
+Caps Lock and tap shortcuts use a Windows keyboard hook, which sees every key press while one of them
+is chosen, or while a shortcut is being recorded. The app only compares each press with the keys it
+is waiting for: nothing is stored or logged, except the one shortcut you record.
 
 The **Language** menu has:
 - **English** or **Spanish**: the quickest, every dictation is in that language;

@@ -16,10 +16,11 @@ change or depend on Kuadrant.
   detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Shortcut, Chime, Quit.
 - **Hotkey: press once to start, press again to stop** (toggle, not hold-to-talk). Default `Ctrl+Alt+Space`.
   `Esc` while recording cancels and inserts nothing. Register the hotkey with the Win32 `RegisterHotKey`
-  function through `ctypes` (no extra package). The tray's Shortcut menu offers F9, Caps Lock and
-  Ctrl+Shift, remembered in `settings.json`. Caps Lock and a Ctrl+Shift tap cannot work through
-  `RegisterHotKey`, so they use a `WH_KEYBOARD_LL` keyboard hook, installed only while one is chosen.
-  The hook must never store or log keys.
+  function through `ctypes` (no extra package). The tray's Shortcut menu offers F9, Caps Lock,
+  Ctrl+Shift and "Record new shortcut...", remembered in `settings.json`. Caps Lock and tap shortcuts
+  (two or more modifiers alone) cannot work through `RegisterHotKey`, so they use a `WH_KEYBOARD_LL`
+  keyboard hook, installed only while one is chosen or a shortcut is being recorded.
+  The hook must never store or log keys; only the one recorded shortcut is saved.
 - **Recording** from the default microphone with `sounddevice`, 16 kHz mono, kept in memory only
   (never written to disk). A maximum length stops runaway recordings.
 - **Feedback:** a small floating black pill in the bottom-right corner above the taskbar (live sound

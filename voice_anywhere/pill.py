@@ -6,6 +6,7 @@ keeps the look testable without any window.
 PillAnimator holds the state and is asked for one picture per frame:
   listen()        pill grows and fades in, bars follow set_level()
   think()         pill shrinks to the smaller dots pill, a soft wave runs across the dots
+  prompt(text)    pill fades in with a short message instead of bars
   hide()          pill fades out
   frame(now)      the picture for this moment, or None once fully hidden
 Its methods may be called from any thread.
@@ -13,7 +14,7 @@ Its methods may be called from any thread.
 import math
 import threading
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 LISTEN_SIZE = (150, 44)  # pill width, height at 100% display scaling
 THINK_SIZE = (110, 34)
@@ -25,8 +26,9 @@ SUPERSAMPLE = 3  # draw larger, then shrink: smooth edges
 FADE_SECONDS, MORPH_SECONDS = 0.16, 0.25
 ATTACK_SECONDS, RELEASE_SECONDS = 0.05, 0.18  # how fast the bars rise and fall
 WAVE_SECONDS = 1.6  # time for the brightness wave to cross the dots
+TEXT_SIZE = 13
 
-HIDDEN, LISTENING, THINKING = "hidden", "listening", "thinking"
+HIDDEN, LISTENING, THINKING, PROMPT = "hidden", "listening", "thinking", "prompt"
 
 
 def canvas_size(scale: float = 1.0) -> tuple[int, int]:
@@ -68,13 +70,21 @@ def _ease(f):
     return f * f * (3 - 2 * f)  # smoothstep: starts and ends gently
 
 
+def _font(size: float):
+    try:
+        return ImageFont.truetype("segoeui.ttf", round(size))
+    except OSError:  # not on this computer
+        return ImageFont.load_default(round(size))
+
+
 def render(level: float, t: float, appear: float = 1.0, morph: float = 0.0,
-           scale: float = 1.0) -> Image.Image:
+           scale: float = 1.0, text=None) -> Image.Image:
     """One picture of the pill.
 
     appear: 0 = invisible, 1 = fully shown (it also grows from 85% to full size)
     morph:  0 = listening pill with bars, 1 = thinking pill with dots
     scale:  Windows display scaling (1.0 = 100%, 1.5 = 150%)
+    text:   a short message to show instead of the bars
     """
     k = scale * SUPERSAMPLE
     cw, ch = canvas_size(scale)
@@ -114,9 +124,12 @@ def render(level: float, t: float, appear: float = 1.0, morph: float = 0.0,
             r = DOT_SIZE * inner / 2
             draw.ellipse((x - r, cy - r, x + r, cy + r), fill=grey(b * _ease(morph)))
 
-    # Whichever is fading in is drawn last, on top.
-    for layer in ((bars, dots) if morph >= 0.5 else (dots, bars)):
-        layer()
+    if text:
+        draw.text((cx, cy), text, font=_font(TEXT_SIZE * inner), fill=grey(1.0), anchor="mm")
+    else:
+        # Whichever is fading in is drawn last, on top.
+        for layer in ((bars, dots) if morph >= 0.5 else (dots, bars)):
+            layer()
 
     img = img.resize((cw, ch), Image.LANCZOS)
     alpha = OPACITY * _ease(max(0.0, min(1.0, appear)))
@@ -132,6 +145,7 @@ class PillAnimator:
         self.appear = 0.0
         self.morph = 0.0
         self.level = 0.0  # smoothed loudness used for drawing
+        self.text = None
         self._target_level = 0.0
         self._last = None
         self._lock = threading.Lock()
@@ -141,7 +155,12 @@ class PillAnimator:
             if self.state == HIDDEN:
                 self.morph = 0.0
             self.state = LISTENING
+            self.text = None
             self._target_level = 0.0
+
+    def prompt(self, text: str) -> None:
+        with self._lock:
+            self.state, self.text, self.morph = PROMPT, text, 0.0
 
     def think(self) -> None:
         with self._lock:
@@ -168,7 +187,7 @@ class PillAnimator:
             if self.state == HIDDEN:
                 self._last = None
                 return None
-            showing = self.state in (LISTENING, THINKING)
+            showing = self.state in (LISTENING, THINKING, PROMPT)
             step = dt / FADE_SECONDS
             self.appear = min(1.0, self.appear + step) if showing else max(0.0, self.appear - step)
             if self.state == THINKING:
@@ -179,5 +198,5 @@ class PillAnimator:
             if not showing and self.appear <= 0.0:
                 self.state, self.morph, self.level, self._last = HIDDEN, 0.0, 0.0, None
                 return None
-            level, appear, morph = self.level, self.appear, self.morph
-        return render(level, now, appear, morph, self.scale)
+            level, appear, morph, text = self.level, self.appear, self.morph, self.text
+        return render(level, now, appear, morph, self.scale, text)

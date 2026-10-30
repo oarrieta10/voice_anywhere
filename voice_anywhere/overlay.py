@@ -139,6 +139,10 @@ class Overlay:
         self.animator.think()
         self._wake.set()
 
+    def prompt(self, text: str) -> None:
+        self.animator.prompt(text)
+        self._wake.set()
+
     def hide(self) -> None:
         self.animator.hide()
         self._wake.set()

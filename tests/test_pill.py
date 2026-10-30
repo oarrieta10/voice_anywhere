@@ -54,6 +54,26 @@ def test_thinking_pill_is_smaller():
     assert width(render(0, 0, morph=1.0)) < width(render(0, 0, morph=0.0))
 
 
+def test_message_draws_text_inside_the_pill():
+    plain, message = render(0, 0), render(0, 0, text="Press your shortcut…")
+    assert plain.size == message.size
+    box = message.convert("L").point(lambda v: 255 if v > 200 else 0).getbbox()
+    assert box[0] > 8 and box[2] < message.size[0] - 8  # the words fit, with room at the ends
+
+
+def test_prompt_shows_and_hides_like_the_pill():
+    a = PillAnimator()
+    a.prompt("Press your shortcut…")
+    run(a, 0.0, 0.5)
+    assert a.state == pill.PROMPT and a.appear == 1.0
+    a.hide()
+    for step in range(10):
+        last = a.frame(1.0 + 0.05 * step)
+    assert last is None and not a.active
+    a.listen()
+    assert a.text is None
+
+
 def run(animator, start, end, fps=30):
     """Ask for frames like the overlay window does; returns the last one."""
     frame, steps = None, round((end - start) * fps)

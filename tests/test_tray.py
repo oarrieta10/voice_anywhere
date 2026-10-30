@@ -15,6 +15,9 @@ class FakeOverlay:
     def hide(self):
         self.log.append("hide")
 
+    def prompt(self, text):
+        self.log.append("prompt")
+
 
 def test_pill_follows_state():
     overlay = FakeOverlay()
@@ -142,6 +145,53 @@ def test_shortcut_that_fails_changes_nothing_and_says_why(monkeypatch, tmp_path)
     assert t.hotkey_name == "f9"
     assert settings.load() == {}
     assert FakeIcon.notes == ["Another program may already be using it."]
+
+
+def test_recorded_shortcut_is_applied_and_remembered(monkeypatch, tmp_path):
+    from voice_anywhere import settings
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    overlay = FakeOverlay()
+    t = Tray(overlay)
+    t.hotkey_name = "f9"
+    t.on_record_shortcut = lambda done: done("ctrl+alt+d", None)
+    t.on_hotkey_change = lambda code: None
+    t.record_shortcut()
+    assert overlay.log == ["prompt", "hide"]
+    assert t.hotkey_name == "ctrl+alt+d" and t.custom_shortcut()
+    assert t.hotkey_label() == "Ctrl+Alt+D"
+    assert settings.load() == {"hotkey": "ctrl+alt+d"}
+
+
+def test_refused_shortcut_changes_nothing_and_says_why(monkeypatch, tmp_path):
+    from voice_anywhere import settings
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    t = Tray(FakeOverlay())
+    t.hotkey_name = "f9"
+    notes = []
+    t.notify = lambda message, kind="error": notes.append(message)
+    t.on_record_shortcut = lambda done: done(None, "D on its own is needed for typing.")
+    t.record_shortcut()
+    assert t.hotkey_name == "f9" and not t.custom_shortcut()
+    assert settings.load() == {}
+    assert notes == ["D on its own is needed for typing."]
+
+
+def test_recording_refused_during_dictation_hides_the_prompt():
+    from voice_anywhere.hotkey import HotkeyError
+
+    overlay = FakeOverlay()
+    t = Tray(overlay)
+    notes = []
+    t.notify = lambda message, kind="error": notes.append(message)
+
+    def busy(done):
+        raise HotkeyError("Finish the dictation first")
+
+    t.on_record_shortcut = busy
+    t.record_shortcut()
+    assert overlay.log == ["prompt", "hide"] and notes == ["Finish the dictation first"]
 
 
 def test_every_menu_shortcut_is_a_usable_hotkey():

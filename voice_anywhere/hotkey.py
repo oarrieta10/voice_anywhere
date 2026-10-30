@@ -7,10 +7,15 @@ recording, so Esc keeps working normally in other programs the rest of the time.
 Two hotkeys cannot work through RegisterHotKey, so they use a Windows keyboard hook
 (SetWindowsHookEx) that runs only while one of them is chosen:
   - capslock: the key must be stopped before it reaches Windows, or capitals switch on too.
-  - ctrl+shift: it only counts as a quick tap of those two keys with nothing else pressed,
-    so that shortcuts such as Ctrl+Shift+V keep working.
+  - ctrl+shift, or any two or more of ctrl, alt, shift and win: it only counts as a quick
+    tap of those keys with nothing else pressed, so that shortcuts such as Ctrl+Shift+V
+    keep working.
 The hook sees every key press, but only compares it with these keys. Nothing is stored or
 logged, and no key other than Caps Lock is ever held back.
+
+Recording a new shortcut (record()) also uses the hook, for those few seconds only. Until
+the shortcut has been pressed, every key is held back from other programs. Only that one
+shortcut is kept.
 Settings:
   VOICE_HOTKEY  for example "ctrl+alt+space" (default), "ctrl+shift+d", "f9", "capslock"
 """
@@ -25,13 +30,17 @@ DEFAULT_HOTKEY = "ctrl+alt+space"
 MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN, MOD_NOREPEAT = 0x1, 0x2, 0x4, 0x8, 0x4000
 WM_HOTKEY, WM_QUIT, WM_APP = 0x0312, 0x0012, 0x8000
 WM_ESC_ON, WM_ESC_OFF, WM_RUN_TOGGLE, WM_CHANGE = WM_APP + 1, WM_APP + 2, WM_APP + 3, WM_APP + 4
+WM_RECORD, WM_RECORD_END = WM_APP + 5, WM_APP + 6
 WM_KEYDOWN, WM_SYSKEYDOWN = 0x100, 0x104
 WH_KEYBOARD_LL = 13
 KEYEVENTF_KEYUP = 0x2
 VK_ESCAPE, VK_CAPITAL = 0x1B, 0x14
-CTRL_KEYS, SHIFT_KEYS = {0x11, 0xA2, 0xA3}, {0x10, 0xA0, 0xA1}
+MODIFIER_OF_KEY = {0x11: "ctrl", 0xA2: "ctrl", 0xA3: "ctrl", 0x10: "shift", 0xA0: "shift",
+                   0xA1: "shift", 0x12: "alt", 0xA4: "alt", 0xA5: "alt", 0x5B: "win", 0x5C: "win"}
+MODIFIER_ORDER = ("ctrl", "alt", "shift", "win")
 TOGGLE_ID, CANCEL_ID = 1, 2
 TAP_SECONDS = 0.5  # holding Ctrl+Shift longer than this is not a tap
+RECORD_SECONDS = 10  # a shortcut recording gives up after this long
 OUR_KEYPRESS = 0x564F4943  # marks the Caps Lock press the app sends itself
 
 MODIFIERS = {"ctrl": MOD_CONTROL, "control": MOD_CONTROL, "alt": MOD_ALT,
@@ -46,7 +55,9 @@ KEYS.update({f"f{n}": 0x6F + n for n in range(1, 25)})
 # Keys that may be used on their own: rarely needed for typing, so taking one over for
 # dictation costs little. Every other key needs a modifier.
 SOLO_KEYS = {f"f{n}" for n in range(1, 25)} | {"pause", "insert"}
-HOOK_HOTKEYS = {"capslock", "ctrl+shift"}  # these need the keyboard hook
+KEY_NAMES = {}  # key code -> name, for recording a shortcut
+for _key_name, _vk in KEYS.items():
+    KEY_NAMES.setdefault(_vk, _key_name)
 
 
 class KBDLLHOOKSTRUCT(ctypes.Structure):
@@ -69,6 +80,18 @@ def hotkey_text() -> str:
 
 def _name(text: str) -> str:
     return text.replace(" ", "").lower()
+
+
+def _modifier_parts(name: str) -> list[str]:
+    """["ctrl", "shift"] for "ctrl+shift"; [] unless it is two or more modifiers only."""
+    parts = name.split("+")
+    if len(parts) < 2 or not all(p in MODIFIERS for p in parts):
+        return []
+    return [{"control": "ctrl", "windows": "win"}.get(p, p) for p in parts]
+
+
+def needs_hook(text: str) -> bool:
+    return _name(text) == "capslock" or bool(_modifier_parts(_name(text)))
 
 
 def parse_hotkey(text: str) -> tuple[int, int]:
@@ -94,18 +117,19 @@ def parse_hotkey(text: str) -> tuple[int, int]:
 
 def check_hotkey(text: str) -> None:
     """Raises HotkeyError if this is not a hotkey the listener can use."""
-    if _name(text) not in HOOK_HOTKEYS:
+    if not needs_hook(text):
         parse_hotkey(text)
 
 
 class ChordTap:
-    """Recognises a quick tap of Ctrl+Shift with nothing else pressed.
+    """Recognises a quick tap of two or more modifiers with nothing else pressed.
 
-    It fires when the last of the two keys is let go. Any other key pressed meanwhile
+    It fires when the last of them is let go. Any other key pressed meanwhile
     (Ctrl+Shift+V) or holding them too long (Ctrl+Shift+click) cancels it.
     """
 
-    def __init__(self, clock=time.monotonic):
+    def __init__(self, parts=("ctrl", "shift"), clock=time.monotonic):
+        self.parts = set(parts)
         self.clock = clock
         self._held = set()
         self._both_since = None
@@ -113,14 +137,14 @@ class ChordTap:
 
     def key(self, vk, down) -> bool:
         """Report a key going down or up. True means the tap just finished."""
-        kind = "ctrl" if vk in CTRL_KEYS else "shift" if vk in SHIFT_KEYS else None
-        if kind is None:
+        kind = MODIFIER_OF_KEY.get(vk)
+        if kind not in self.parts:
             if down and self._held:
                 self._spoiled = True
             return False
         if down:
             self._held.add(kind)
-            if len(self._held) == 2 and self._both_since is None:
+            if len(self._held) == len(self.parts) and self._both_since is None:
                 self._both_since = self.clock()
             return False
         self._held.discard(kind)
@@ -130,6 +154,57 @@ class ChordTap:
                   and self.clock() - self._both_since <= TAP_SECONDS)
         self._both_since, self._spoiled = None, False
         return tapped
+
+
+class ShortcutRecorder:
+    """Works out which shortcut is being pressed, one key at a time.
+
+    The verdict is ready when every key has been let go, so that nothing is still held
+    down when the new shortcut starts working. `outcome` is (hotkey, message): hotkey is
+    None if there is none to use, and message says why it was refused (None for Esc).
+    """
+
+    def __init__(self):
+        self.outcome = None
+        self._held = set()
+        self._modifiers = set()
+
+    def key(self, vk, down) -> bool:
+        """Report a key going down or up. True means the recording is finished."""
+        if down:
+            self._held.add(vk)
+            if self.outcome is None:
+                if vk in MODIFIER_OF_KEY:
+                    self._modifiers.add(MODIFIER_OF_KEY[vk])
+                else:
+                    self.outcome = self._judge(vk)
+            return False
+        self._held.discard(vk)
+        if self._held:
+            return False
+        if self.outcome is None and len(self._modifiers) >= 2:
+            self.outcome = (self._joined(), None)
+        self._modifiers.clear()  # one modifier alone is not a shortcut: keep waiting
+        return self.outcome is not None
+
+    def _joined(self, *key) -> str:
+        return "+".join([m for m in MODIFIER_ORDER if m in self._modifiers] + list(key))
+
+    def _judge(self, vk) -> tuple:
+        solo = not self._modifiers
+        if vk == VK_ESCAPE and solo:
+            return None, None
+        if vk == VK_CAPITAL and solo:
+            return "capslock", None
+        name = KEY_NAMES.get(vk)
+        if name is None:
+            return None, "That key cannot be used for a shortcut."
+        if name not in SOLO_KEYS:
+            if solo:
+                return None, f"{name.title()} on its own is needed for typing. Add Ctrl, Alt or Win."
+            if self._modifiers == {"shift"}:
+                return None, f"Shift+{name.title()} is needed for typing. Add Ctrl, Alt or Win."
+        return self._joined(name), None
 
 
 def _real_user32():
@@ -165,6 +240,9 @@ class HotkeyListener:
         self._tap = ChordTap()
         self._caps_down = False
         self._change = None
+        self._recorder = None
+        self._on_recorded = None
+        self._record_timer = None
 
     def start(self) -> None:
         """Start listening. Raises HotkeyError if another program already uses the hotkey."""
@@ -206,10 +284,24 @@ class HotkeyListener:
         if self._change["error"]:
             raise self._change["error"]
 
+    def record(self, on_done) -> None:
+        """Capture the next shortcut pressed instead of letting it reach any program.
+
+        on_done(hotkey, message) is called on its own thread, with the values described
+        in ShortcutRecorder. Giving up after RECORD_SECONDS gives (None, None).
+        """
+        if self._recorder is not None:
+            raise HotkeyError("Already recording a shortcut.")
+        self._recorder, self._on_recorded = ShortcutRecorder(), on_done
+        self._post(WM_RECORD)
+        self._record_timer = threading.Timer(RECORD_SECONDS, self._post, [WM_RECORD_END])
+        self._record_timer.daemon = True
+        self._record_timer.start()
+
     # --- listener thread ---
 
     def _bind(self, text: str) -> None:
-        if _name(text) in HOOK_HOTKEYS:
+        if needs_hook(text):
             self._start_hook(_name(text))
             return
         modifiers, vk = parse_hotkey(text)
@@ -219,19 +311,31 @@ class HotkeyListener:
 
     def _unbind(self) -> None:
         self._user32.UnregisterHotKey(None, TOGGLE_ID)
-        if self._hook is not None:
+        self._watching = None
+        self._sync_hook()
+
+    def _sync_hook(self) -> None:
+        """The hook runs only while a hotkey needs it or a shortcut is being recorded."""
+        wanted = self._watching is not None or self._recorder is not None
+        if wanted and self._hook is None:
+            self._hook_proc = HOOKPROC(self._on_hook)
+            self._hook = self._user32.SetWindowsHookExW(WH_KEYBOARD_LL, self._hook_proc, None, 0)
+            if not self._hook:
+                self._hook = self._hook_proc = None
+                raise HotkeyError("Could not set up the keyboard watcher.")
+        elif not wanted and self._hook is not None:
             self._user32.UnhookWindowsHookEx(self._hook)
-            self._hook = self._hook_proc = self._watching = None
+            self._hook = self._hook_proc = None
 
     def _start_hook(self, name: str) -> None:
         user32 = self._user32
         self._watching = name
-        self._tap, self._caps_down = ChordTap(), False
-        self._hook_proc = HOOKPROC(self._on_hook)
-        self._hook = user32.SetWindowsHookExW(WH_KEYBOARD_LL, self._hook_proc, None, 0)
-        if not self._hook:
-            self._hook_proc = self._watching = None
-            raise HotkeyError(f"Could not set up the hotkey {name}.")
+        self._tap, self._caps_down = ChordTap(_modifier_parts(name)), False
+        try:
+            self._sync_hook()
+        except HotkeyError:
+            self._watching = None
+            raise
         if name == "capslock" and user32.GetKeyState(VK_CAPITAL) & 1:
             # Capitals were on: switch them off now, as this key can no longer do it.
             user32.keybd_event(VK_CAPITAL, 0x3A, 0, OUR_KEYPRESS)
@@ -249,6 +353,10 @@ class HotkeyListener:
 
     def _key_event(self, vk, down) -> bool:
         """Act on one key. True means hold this key back from Windows."""
+        if self._recorder is not None:
+            if self._recorder.key(vk, down):
+                self._post(WM_RECORD_END)
+            return True
         if self._watching == "capslock":
             if vk != VK_CAPITAL:
                 return False
@@ -256,9 +364,24 @@ class HotkeyListener:
                 self._post(WM_RUN_TOGGLE)
             self._caps_down = down
             return True
-        if self._tap.key(vk, down):
+        if self._watching is not None and self._tap.key(vk, down):
             self._post(WM_RUN_TOGGLE)
         return False
+
+    def _start_recording(self) -> None:
+        try:
+            self._sync_hook()
+        except HotkeyError as exc:
+            self._end_recording(str(exc))
+
+    def _end_recording(self, problem=None) -> None:
+        recorder, self._recorder = self._recorder, None
+        if recorder is None:
+            return
+        self._record_timer.cancel()
+        self._sync_hook()
+        hotkey, message = recorder.outcome or (None, problem)
+        threading.Thread(target=self._on_recorded, args=(hotkey, message), daemon=True).start()
 
     def _switch(self) -> None:
         change, old = self._change, self.hotkey
@@ -276,6 +399,10 @@ class HotkeyListener:
             self.on_toggle()
         elif message == WM_CHANGE:
             self._switch()
+        elif message == WM_RECORD:
+            self._start_recording()
+        elif message == WM_RECORD_END:
+            self._end_recording()
         elif message == WM_HOTKEY and wparam == CANCEL_ID:
             self.on_cancel()
         elif message == WM_ESC_ON:

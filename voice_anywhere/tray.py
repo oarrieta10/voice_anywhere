@@ -62,6 +62,7 @@ class Tray:
         self.hotkey_name = ""
         self.on_quit = None
         self.on_hotkey_change = None  # set by run(); raises HotkeyError if the key cannot be used
+        self.on_record_shortcut = None  # set by run(); calls back with (hotkey, message)
         self.state = "idle"
         self._images = {s: make_icon(c) for s, c in STATE_COLOURS.items()}
         self._stopped = threading.Event()
@@ -95,6 +96,9 @@ class Tray:
             return f"Loading speech model ({info['model']})…"
         return f"Ready: press {self.hotkey_label()} to dictate ({self.language_name()})"
 
+    def custom_shortcut(self) -> bool:
+        return self.hotkey_name not in [code for _, code in SHORTCUTS]
+
     def hotkey_label(self) -> str:
         labels = {code: label for label, code in SHORTCUTS}
         return labels.get(self.hotkey_name, self.hotkey_name.title())
@@ -122,6 +126,22 @@ class Tray:
         settings.save(hotkey=code)
         log.info("Shortcut set to %s", code)
         self._refresh()
+
+    def record_shortcut(self, icon=None, item=None) -> None:
+        """Called from the Shortcut menu: the next keys pressed become the shortcut."""
+        self.overlay.prompt("Press your shortcut…")
+        try:
+            self.on_record_shortcut(self._shortcut_recorded)
+        except HotkeyError as exc:
+            self.overlay.hide()
+            self.notify(str(exc), "error")
+
+    def _shortcut_recorded(self, hotkey, message) -> None:
+        self.overlay.hide()
+        if message:
+            self.notify(message, "error")
+        if hotkey:
+            self.choose_shortcut(hotkey)
 
     def toggle_chime(self, icon=None, item=None) -> None:
         """Called from the Chime menu item: flip it now and remember it."""
@@ -173,7 +193,11 @@ class Tray:
             pystray.MenuItem("Language", pystray.Menu(
                 *(language_item(label, code) for label, code in LANGUAGES))),
             pystray.MenuItem("Shortcut", pystray.Menu(
-                *(shortcut_item(label, code) for label, code in SHORTCUTS))),
+                *(shortcut_item(label, code) for label, code in SHORTCUTS),
+                pystray.MenuItem(lambda item: self.hotkey_label(), None, radio=True,
+                                 checked=lambda item: True, visible=lambda item: self.custom_shortcut()),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem("Record new shortcut…", self.record_shortcut))),
             pystray.MenuItem("Chime", self.toggle_chime, checked=lambda item: chime.enabled()),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self._quit),

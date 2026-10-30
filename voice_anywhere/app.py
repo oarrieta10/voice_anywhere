@@ -176,7 +176,13 @@ def run() -> int:
             raise HotkeyError("Finish the dictation first, then change the shortcut.")
         listener.change(hotkey)
 
+    def record_hotkey(on_done):
+        if dictation.state != IDLE:
+            raise HotkeyError("Finish the dictation first, then change the shortcut.")
+        listener.record(on_done)
+
     tray.on_hotkey_change = change_hotkey
+    tray.on_record_shortcut = record_hotkey
 
     def quit_app():
         listener.stop()
