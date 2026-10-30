@@ -75,6 +75,24 @@ def make(text="Hello world.", transcribe=None, **recorder_kwargs):
     return d, recorder, inserter, ui, hotkey, pending
 
 
+def test_chime_sounds_once_when_listening_starts():
+    d, *_ = make()
+    chimes = []
+    d.chime = lambda: chimes.append(d.state)
+    d.toggle()
+    assert chimes == [LISTENING]
+    d.toggle()
+    assert chimes == [LISTENING]
+
+
+def test_no_chime_when_the_microphone_fails():
+    d, *_ = make(fail=True)
+    chimes = []
+    d.chime = lambda: chimes.append(d.state)
+    d.toggle()
+    assert chimes == []
+
+
 def test_press_speak_press_inserts_text():
     d, recorder, inserter, ui, hotkey, pending = make()
     d.toggle()

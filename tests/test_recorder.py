@@ -94,6 +94,26 @@ def test_maximum_length_trims_and_calls_on_limit(streams):
     np.testing.assert_allclose(rec.stop(), [1, 2, 3, 4])
 
 
+def test_first_moments_are_skipped_on_every_recording(streams):
+    made, factory = streams
+    rec = Recorder(skip_seconds=3 / SAMPLE_RATE, stream_factory=factory)
+    rec.start()
+    made[0].feed([1, 2])
+    made[0].feed([3, 4, 5])
+    np.testing.assert_allclose(rec.stop(), [4, 5])
+    rec.start()
+    made[1].feed([6, 7, 8, 9])
+    np.testing.assert_allclose(rec.stop(), [9])
+
+
+def test_skipped_audio_does_not_count_towards_the_limit(streams):
+    made, factory = streams
+    rec = Recorder(max_seconds=2 / SAMPLE_RATE, skip_seconds=2 / SAMPLE_RATE, stream_factory=factory)
+    rec.start()
+    made[0].feed([1, 2, 3, 4, 5])
+    np.testing.assert_allclose(rec.stop(), [3, 4])
+
+
 def test_loudness_of_each_block_is_reported(streams):
     made, factory = streams
     levels = []

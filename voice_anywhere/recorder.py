@@ -4,6 +4,7 @@ The sound card hands us small blocks of samples on its own thread; we keep them 
 list and join them into one 16 kHz mono float32 numpy array when recording stops.
 A recording that reaches the maximum length stops taking audio and calls `on_limit`
 (on a separate thread), so the app can transcribe what it has.
+The first `skip_seconds` of each recording are thrown away (they would hold the chime).
 For the sound bars, `on_level` gets the loudness of each block (a number from 0 to 1);
 only that number is passed on, nothing is kept.
 """
@@ -41,8 +42,9 @@ def _default_stream_factory(**kwargs):
 
 class Recorder:
     def __init__(self, max_seconds=DEFAULT_MAX_SECONDS, on_limit=None, on_level=None,
-                 stream_factory=_default_stream_factory):
+                 stream_factory=_default_stream_factory, skip_seconds=0):
         self.max_frames = int(max_seconds * SAMPLE_RATE)
+        self.skip_frames = int(skip_seconds * SAMPLE_RATE)
         self.on_limit = on_limit
         self.on_level = on_level
         self.peak_level = 0.0  # loudest block of the current recording (for the log)
@@ -50,6 +52,7 @@ class Recorder:
         self._stream = None
         self._chunks = []
         self._frames = 0
+        self._to_skip = 0
         self._limit_hit = False
         self._lock = threading.Lock()
 
@@ -62,6 +65,7 @@ class Recorder:
             return
         with self._lock:
             self._chunks, self._frames, self._limit_hit = [], 0, False
+            self._to_skip = self.skip_frames
             self.peak_level = 0.0
         try:
             stream = self._stream_factory(samplerate=SAMPLE_RATE, channels=1,
@@ -75,8 +79,10 @@ class Recorder:
         with self._lock:
             if self._limit_hit:
                 return
+            skip = min(self._to_skip, len(indata))
+            self._to_skip -= skip
             room = self.max_frames - self._frames
-            block = indata[:room, 0].copy()
+            block = indata[skip:skip + room, 0].copy()
             self._chunks.append(block)
             self._frames += len(block)
             self._limit_hit = self._frames >= self.max_frames

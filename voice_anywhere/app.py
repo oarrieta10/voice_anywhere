@@ -10,7 +10,7 @@ The transcribed text is never logged; only lengths and timings are.
 import logging
 import threading
 
-from . import cleanup, transcriber
+from . import chime, cleanup, transcriber
 from .hotkey import HotkeyListener
 from .inserter import Inserter
 from .recorder import SAMPLE_RATE, Recorder
@@ -30,9 +30,11 @@ def _spawn(target):
 
 
 class Dictation:
-    def __init__(self, recorder, inserter, transcribe, ui, spawn=_spawn, clean=None):
-        """ui needs set_state(state) and notify(message, kind); clean tidies the text."""
+    def __init__(self, recorder, inserter, transcribe, ui, spawn=_spawn, clean=None, chime=None):
+        """ui needs set_state(state) and notify(message, kind); clean tidies the text;
+        chime, if given, is called when listening starts."""
         self.clean = clean or _clean
+        self.chime = chime
         self.recorder = recorder
         self.inserter = inserter
         self.transcribe = transcribe
@@ -86,6 +88,8 @@ class Dictation:
             return
         self._cancel_key(True)
         self._set_state(LISTENING)
+        if self.chime is not None:
+            self.chime()
 
     def _finish(self):
         audio = self.recorder.stop()
@@ -131,8 +135,11 @@ def run() -> int:
 
     overlay = Overlay()
     tray = Tray(overlay)
-    recorder = Recorder(on_limit=lambda: dictation.limit_reached(), on_level=overlay.set_level)
-    dictation = Dictation(recorder, Inserter(), transcriber.transcribe, tray)
+    chime_on = chime.enabled()
+    recorder = Recorder(on_limit=lambda: dictation.limit_reached(), on_level=overlay.set_level,
+                        skip_seconds=chime.SKIP_SECONDS if chime_on else 0)
+    dictation = Dictation(recorder, Inserter(), transcriber.transcribe, tray,
+                          chime=chime.play if chime_on else None)
     try:
         listener = HotkeyListener(on_toggle=dictation.toggle, on_cancel=dictation.cancel)
         listener.start()

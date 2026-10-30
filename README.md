@@ -11,10 +11,10 @@ and the log never contains what you said.
 ## Everyday use
 
 1. Click where you want the text (an Outlook email, a Teams chat, a Word document, a browser box...).
-2. Press **Ctrl+Alt+Space** (or your own hotkey, see Settings). A small black pill fades in at
-   the bottom-right corner of the screen, above the clock. Its white bars move with your voice,
-   so you can see the microphone is hearing you.
-3. Speak normally. Punctuation is added for you.
+2. Press **Ctrl+Alt+Space** (or your own hotkey, see Settings). A soft two-note chime plays and a
+   small black pill fades in at the bottom-right corner of the screen, above the clock. Its white
+   bars move with your voice, so you can see the microphone is hearing you.
+3. Speak normally, starting just after the chime. Punctuation is added for you.
 4. Press the hotkey again. The pill shrinks to a row of dots with a soft wave running across
    them while your speech is turned into text (a second or two), then fades away as the text
    is typed in at your cursor.
@@ -102,6 +102,7 @@ quit Voice Anywhere from the tray and start it again (or sign out and back in).
 | `VOICE_WHISPER_LANG` | Language you speak, as a two-letter code (`en`, `es`, ...); a list such as `en,es` to detect which of those you are speaking; or `auto` to detect any language | `en` |
 | `VOICE_WHISPER_MODEL` | Model size (`small` or `base`), or a folder containing a model | `small` |
 | `VOICE_CLEANUP` | Tidy the text before typing it (`on`), or type exactly what Whisper wrote (`off`) | `on` |
+| `VOICE_CHIME` | Play a soft chime when listening starts (`on`), or stay silent (`off`) | `on` |
 
 Examples:
 
@@ -112,6 +113,9 @@ setx VOICE_HOTKEY "ctrl+shift+d"
 ```powershell
 setx VOICE_WHISPER_LANG "es"
 ```
+
+So that the chime is not typed as a stray word, the first third of a second of each recording
+is thrown away. With `VOICE_CHIME` set to `off`, nothing is thrown away.
 
 A language picked in the tray's **Language** menu wins over `VOICE_WHISPER_LANG`. The choice is
 saved in `%LOCALAPPDATA%\voice-anywhere\settings.json`; delete that file to go back to using
@@ -182,6 +186,7 @@ How the code is laid out (`voice_anywhere\`):
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
+| `chime.py` | The soft chime when listening starts |
 | `settings.py` | Remembers choices made in the tray menu (the language) |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |

@@ -22,6 +22,8 @@ change or depend on Kuadrant.
 - **Feedback:** a small floating black pill in the bottom-right corner above the taskbar (live sound
   bars while listening, a calm dot wave while transcribing, fades in and out), plus
   the tray icon changing state. It must not take keyboard focus away from the target window.
+  A soft chime (`voice_anywhere/chime.py`) plays when listening starts; the first moment of each
+  recording is thrown away so the chime is not transcribed.
 - **Transcription:** `voice_anywhere/transcriber.py`, faster-whisper on the CPU, `int8`, `vad_filter=True`,
   `local_files_only=True`. The model is preloaded in the background at start-up.
 - **Inserting the text:** save the clipboard, put the text on it, send `Ctrl+V` with the Win32
@@ -51,6 +53,7 @@ change or depend on Kuadrant.
 | `VOICE_WHISPER_LANG` | Language code, `auto`, or a list such as `en,es` (detect, choosing only from those) | `en` |
 | `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space` | `ctrl+alt+space` |
 | `VOICE_CLEANUP` | Rule-based text cleanup (`voice_anywhere/cleanup.py`), `on` or `off` | `on` |
+| `VOICE_CHIME` | Chime when listening starts (`voice_anywhere/chime.py`), `on` or `off` | `on` |
 
 ## Conventions
 - **Plain language.** Oscar is a consulting engineer, not a full-time developer. Explain changes simply
