@@ -32,9 +32,10 @@ def _spawn(target):
 class Dictation:
     def __init__(self, recorder, inserter, transcribe, ui, spawn=_spawn, clean=None, chime=None):
         """ui needs set_state(state) and notify(message, kind); clean tidies the text;
-        chime, if given, is called when listening starts."""
+        chime, if given, is called when the microphone is live."""
         self.clean = clean or _clean
         self.chime = chime
+        self._announced = False
         self.recorder = recorder
         self.inserter = inserter
         self.transcribe = transcribe
@@ -87,9 +88,18 @@ class Dictation:
             self.ui.notify(str(exc), "error")
             return
         self._cancel_key(True)
-        self._set_state(LISTENING)
-        if self.chime is not None:
-            self.chime()
+        self.state = LISTENING  # the pill and chime wait for mic_ready()
+        self._announced = False
+
+    def mic_ready(self) -> None:
+        """The microphone is really hearing: show the pill and chime together."""
+        with self._lock:
+            if self.state != LISTENING or self._announced:
+                return
+            self._announced = True
+            self.ui.set_state(LISTENING)
+            if self.chime is not None:
+                self.chime()
 
     def _finish(self):
         audio = self.recorder.stop()
@@ -129,17 +139,18 @@ def run() -> int:
     from .overlay import Overlay
     from .tray import Tray
 
-    saved_language = settings.load().get("language")
-    if saved_language:  # chosen earlier in the tray menu
-        transcriber.set_language(saved_language)
+    saved = settings.load()  # choices made earlier in the tray menu
+    if saved.get("language"):
+        transcriber.set_language(saved["language"])
+    if "chime" in saved:
+        chime.set_enabled(bool(saved["chime"]))
 
     overlay = Overlay()
     tray = Tray(overlay)
-    chime_on = chime.enabled()
     recorder = Recorder(on_limit=lambda: dictation.limit_reached(), on_level=overlay.set_level,
-                        skip_seconds=chime.SKIP_SECONDS if chime_on else 0)
-    dictation = Dictation(recorder, Inserter(), transcriber.transcribe, tray,
-                          chime=chime.play if chime_on else None)
+                        skip_seconds=chime.skip_seconds,
+                        on_ready=lambda: dictation.mic_ready())
+    dictation = Dictation(recorder, Inserter(), transcriber.transcribe, tray, chime=chime.play)
     try:
         listener = HotkeyListener(on_toggle=dictation.toggle, on_cancel=dictation.cancel)
         listener.start()

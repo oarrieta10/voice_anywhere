@@ -4,7 +4,11 @@ The sound card hands us small blocks of samples on its own thread; we keep them 
 list and join them into one 16 kHz mono float32 numpy array when recording stops.
 A recording that reaches the maximum length stops taking audio and calls `on_limit`
 (on a separate thread), so the app can transcribe what it has.
-The first `skip_seconds` of each recording are thrown away (they would hold the chime).
+`on_ready` is called once per recording (on a separate thread) when the microphone really
+delivers its first sound. That can be a second or two after opening it, because a
+Bluetooth headset has to switch into its call mode first. If no sound comes at all it is
+called after READY_TIMEOUT, so the app still shows that it is listening.
+The first `skip_seconds()` of sound are thrown away (they would hold the chime).
 For the sound bars, `on_level` gets the loudness of each block (a number from 0 to 1);
 only that number is passed on, nothing is kept.
 """
@@ -15,6 +19,7 @@ import numpy as np
 
 SAMPLE_RATE = 16000  # what Whisper expects
 DEFAULT_MAX_SECONDS = 120
+READY_TIMEOUT = 3.0
 QUIET_DB, LOUD_DB = -60.0, -18.0  # loudness shown as no bars / full bars
 
 
@@ -42,9 +47,12 @@ def _default_stream_factory(**kwargs):
 
 class Recorder:
     def __init__(self, max_seconds=DEFAULT_MAX_SECONDS, on_limit=None, on_level=None,
-                 stream_factory=_default_stream_factory, skip_seconds=0):
+                 stream_factory=_default_stream_factory, skip_seconds=lambda: 0, on_ready=None,
+                 ready_timeout=READY_TIMEOUT):
         self.max_frames = int(max_seconds * SAMPLE_RATE)
-        self.skip_frames = int(skip_seconds * SAMPLE_RATE)
+        self.skip_seconds = skip_seconds
+        self.on_ready = on_ready
+        self.ready_timeout = ready_timeout
         self.on_limit = on_limit
         self.on_level = on_level
         self.peak_level = 0.0  # loudest block of the current recording (for the log)
@@ -53,6 +61,8 @@ class Recorder:
         self._chunks = []
         self._frames = 0
         self._to_skip = 0
+        self._ready_sent = False
+        self._ready_timer = None
         self._limit_hit = False
         self._lock = threading.Lock()
 
@@ -65,7 +75,8 @@ class Recorder:
             return
         with self._lock:
             self._chunks, self._frames, self._limit_hit = [], 0, False
-            self._to_skip = self.skip_frames
+            self._to_skip = int(self.skip_seconds() * SAMPLE_RATE)
+            self._ready_sent = False
             self.peak_level = 0.0
         try:
             stream = self._stream_factory(samplerate=SAMPLE_RATE, channels=1,
@@ -74,8 +85,20 @@ class Recorder:
         except Exception as exc:  # no microphone, device busy, ...
             raise RecorderError(f"Could not open the microphone: {exc}"[:300]) from exc
         self._stream = stream
+        if self.on_ready is not None:
+            self._ready_timer = threading.Timer(self.ready_timeout, self._mic_ready)
+            self._ready_timer.daemon = True
+            self._ready_timer.start()
+
+    def _mic_ready(self) -> None:
+        with self._lock:
+            if self._ready_sent or self.on_ready is None:
+                return
+            self._ready_sent = True
+        threading.Thread(target=self.on_ready, name="microphone-ready", daemon=True).start()
 
     def _callback(self, indata, frames, time_info, status):
+        self._mic_ready()
         with self._lock:
             if self._limit_hit:
                 return
@@ -96,6 +119,9 @@ class Recorder:
             threading.Thread(target=self.on_limit, name="recording-limit", daemon=True).start()
 
     def _close(self) -> None:
+        if self._ready_timer is not None:
+            self._ready_timer.cancel()
+            self._ready_timer = None
         stream, self._stream = self._stream, None
         if stream is not None:
             try:

@@ -72,6 +72,13 @@ def make(text="Hello world.", transcribe=None, **recorder_kwargs):
 
     d = Dictation(recorder, inserter, transcribe or fake_transcribe, ui, spawn=pending.append)
     d.hotkey = hotkey
+    d.press_only = d.toggle
+
+    def press_and_mic_answers():
+        d.press_only()
+        d.mic_ready()
+
+    d.toggle = press_and_mic_answers
     return d, recorder, inserter, ui, hotkey, pending
 
 
@@ -83,6 +90,29 @@ def test_chime_sounds_once_when_listening_starts():
     assert chimes == [LISTENING]
     d.toggle()
     assert chimes == [LISTENING]
+
+
+def test_pill_and_chime_wait_for_the_microphone():
+    d, recorder, inserter, ui, hotkey, pending = make()
+    chimes = []
+    d.chime = lambda: chimes.append(ui.states[-1])
+    d.press_only()
+    assert d.state == LISTENING and recorder.log == ["start"]
+    assert ui.states == [] and chimes == []
+    d.mic_ready()
+    assert ui.states == [LISTENING] and chimes == [LISTENING]
+    d.mic_ready()
+    assert ui.states == [LISTENING] and chimes == [LISTENING]
+
+
+def test_stopping_before_the_microphone_answers_shows_nothing_late():
+    d, recorder, inserter, ui, hotkey, pending = make(seconds=0.1)
+    chimes = []
+    d.chime = lambda: chimes.append(True)
+    d.press_only()
+    d.press_only()
+    d.mic_ready()
+    assert d.state == IDLE and chimes == [] and LISTENING not in ui.states
 
 
 def test_no_chime_when_the_microphone_fails():

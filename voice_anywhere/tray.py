@@ -8,7 +8,7 @@ import threading
 
 from PIL import Image, ImageDraw
 
-from . import settings, transcriber
+from . import chime, settings, transcriber
 
 log = logging.getLogger("voice_anywhere")
 
@@ -101,6 +101,14 @@ class Tray:
         log.info("Language set to %s", code)
         self._refresh()
 
+    def toggle_chime(self, icon=None, item=None) -> None:
+        """Called from the Chime menu item: flip it now and remember it."""
+        on = not chime.enabled()
+        chime.set_enabled(on)
+        settings.save(chime=on)
+        log.info("Chime turned %s", "on" if on else "off")
+        self._refresh()
+
     def _title(self) -> str:
         return ("Voice Anywhere: " + self.status_text())[:127]  # Windows tooltip limit
 
@@ -137,6 +145,7 @@ class Tray:
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Language", pystray.Menu(
                 *(language_item(label, code) for label, code in LANGUAGES))),
+            pystray.MenuItem("Chime", self.toggle_chime, checked=lambda item: chime.enabled()),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self._quit),
         )

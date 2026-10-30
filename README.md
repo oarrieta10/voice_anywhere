@@ -11,9 +11,10 @@ and the log never contains what you said.
 ## Everyday use
 
 1. Click where you want the text (an Outlook email, a Teams chat, a Word document, a browser box...).
-2. Press **Ctrl+Alt+Space** (or your own hotkey, see Settings). A soft two-note chime plays and a
-   small black pill fades in at the bottom-right corner of the screen, above the clock. Its white
-   bars move with your voice, so you can see the microphone is hearing you.
+2. Press **Ctrl+Alt+Space** (or your own hotkey, see Settings). As soon as the microphone is really
+   hearing, a chime plays and a small black pill fades in at the bottom-right corner of the screen,
+   above the clock. Its white bars move with your voice. With a Bluetooth headset this takes about
+   a second, because the headset has to switch into its call mode first.
 3. Speak normally, starting just after the chime. Punctuation is added for you.
 4. Press the hotkey again. The pill shrinks to a row of dots with a soft wave running across
    them while your speech is turned into text (a second or two), then fades away as the text
@@ -49,7 +50,8 @@ to the clock to keep it visible).
 | Black | Not listening: ready or transcribing (hover over it to see which, and whether the speech model has finished loading) |
 | Red | Listening |
 
-Right-click it to see the current status, to pick the **Language** you will speak, or to **Quit**.
+Right-click it to see the current status, to pick the **Language** you will speak, to turn the
+**Chime** on or off (a tick means on, and your choice is remembered), or to **Quit**.
 
 The **Language** menu has:
 - **English** or **Spanish**: the quickest, every dictation is in that language;
@@ -102,7 +104,7 @@ quit Voice Anywhere from the tray and start it again (or sign out and back in).
 | `VOICE_WHISPER_LANG` | Language you speak, as a two-letter code (`en`, `es`, ...); a list such as `en,es` to detect which of those you are speaking; or `auto` to detect any language | `en` |
 | `VOICE_WHISPER_MODEL` | Model size (`small` or `base`), or a folder containing a model | `small` |
 | `VOICE_CLEANUP` | Tidy the text before typing it (`on`), or type exactly what Whisper wrote (`off`) | `on` |
-| `VOICE_CHIME` | Play a soft chime when listening starts (`on`), or stay silent (`off`) | `on` |
+| `VOICE_CHIME` | Play a chime when listening starts (`on`), or stay silent (`off`). The tray's **Chime** item wins over this | `on` |
 
 Examples:
 
@@ -114,8 +116,8 @@ setx VOICE_HOTKEY "ctrl+shift+d"
 setx VOICE_WHISPER_LANG "es"
 ```
 
-So that the chime is not typed as a stray word, the first third of a second of each recording
-is thrown away. With `VOICE_CHIME` set to `off`, nothing is thrown away.
+So that the chime is not typed as a stray word, the sound heard while it plays (under half a
+second) is thrown away. With the chime off, nothing is thrown away.
 
 A language picked in the tray's **Language** menu wins over `VOICE_WHISPER_LANG`. The choice is
 saved in `%LOCALAPPDATA%\voice-anywhere\settings.json`; delete that file to go back to using
@@ -186,7 +188,7 @@ How the code is laid out (`voice_anywhere\`):
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
-| `chime.py` | The soft chime when listening starts |
+| `chime.py` | The chime when listening starts (`sounds\pull-out-551.wav`) |
 | `settings.py` | Remembers choices made in the tray menu (the language) |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |
@@ -194,4 +196,5 @@ How the code is laid out (`voice_anywhere\`):
 | `overlay.py` | Shows the pill in a see-through, click-through window that never takes the focus |
 
 `scripts\make_shortcut.ps1` makes the Startup shortcut; `scripts\make_icon.py` redraws
-`voice-anywhere.ico` (`.venv\Scripts\python.exe -m scripts.make_icon`).
+`voice-anywhere.ico` (`.venv\Scripts\python.exe -m scripts.make_icon`); `scripts\make_chime.py`
+turns the chime MP3 into the WAV file the app plays (`.venv\Scripts\python.exe -m scripts.make_chime`).

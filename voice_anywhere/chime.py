@@ -1,48 +1,50 @@
-"""A short, soft two-note chime when listening starts. Fully offline, no sound file.
+"""The chime that plays when the microphone is live. Fully offline.
 
-The notes are worked out here as numbers and played through the default speakers.
-Recording has already begun by then, so the first SKIP_SECONDS of audio are thrown away
-(see Recorder) to keep the chime from being transcribed. A chime that cannot play is only
-logged: dictation carries on without it.
+Plays sounds/pull-out-551.wav with Windows' built-in sound player, which always uses the
+current default speakers. The first SKIP_SECONDS of audio are thrown away (see Recorder)
+so that the chime, heard through speakers, is not transcribed. A chime that cannot play
+is only logged: dictation carries on without it.
 Settings:
-  VOICE_CHIME  "on" (default) or "off"
+  VOICE_CHIME  "on" (default) or "off"; the tray's Chime item wins over it
 """
 import logging
 import os
-
-import numpy as np
+import winsound
+from pathlib import Path
 
 log = logging.getLogger("voice_anywhere")
 
-PLAY_RATE = 44100  # samples per second, a standard rate for speakers
-NOTES = (659.25, 880.0)  # E and A, a rising step
-NOTE_SECONDS = 0.1
-VOLUME = 0.12  # 1.0 is full scale
-SECONDS = len(NOTES) * NOTE_SECONDS
-SKIP_SECONDS = SECONDS + 0.15  # the speakers start a moment after the microphone
+SOUND_FILE = Path(__file__).resolve().parent.parent / "sounds" / "pull-out-551.wav"
+SECONDS = 0.38  # length of the sound
+SKIP_SECONDS = SECONDS + 0.05
+_choice = None  # set from the tray menu; None means use VOICE_CHIME
 
 
 def enabled() -> bool:
+    if _choice is not None:
+        return _choice
     return os.environ.get("VOICE_CHIME", "on").strip().lower() not in ("off", "0", "no", "false")
 
 
-def make_chime() -> np.ndarray:
-    """The chime as float32 samples. Each note fades in and out, so it never clicks."""
-    length = int(NOTE_SECONDS * PLAY_RATE)
-    t = np.arange(length) / PLAY_RATE
-    fade = np.minimum(1.0, t / 0.005) * np.exp(-t * 18) * np.minimum(1.0, (NOTE_SECONDS - t) / 0.01)
-    notes = [np.sin(2 * np.pi * pitch * t) * fade for pitch in NOTES]
-    return (VOLUME * np.concatenate(notes)).astype(np.float32)
+def set_enabled(on: bool) -> None:
+    global _choice
+    _choice = on
 
 
-def _default_player(samples, rate):
-    import sounddevice
+def skip_seconds() -> float:
+    return SKIP_SECONDS if enabled() else 0
 
-    sounddevice.play(samples, rate)  # returns at once; the sound plays in the background
+
+def _default_player(path):
+    if not path.exists():
+        raise FileNotFoundError(path.name)
+    winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
 
 
 def play(player=_default_player) -> None:
+    if not enabled():
+        return
     try:
-        player(make_chime(), PLAY_RATE)
-    except Exception as exc:  # no speakers, device busy, ...
+        player(SOUND_FILE)
+    except Exception as exc:  # no speakers, file missing, ...
         log.warning("Could not play the chime: %s", exc)

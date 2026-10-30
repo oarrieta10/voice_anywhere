@@ -96,7 +96,7 @@ def test_maximum_length_trims_and_calls_on_limit(streams):
 
 def test_first_moments_are_skipped_on_every_recording(streams):
     made, factory = streams
-    rec = Recorder(skip_seconds=3 / SAMPLE_RATE, stream_factory=factory)
+    rec = Recorder(skip_seconds=lambda: 3 / SAMPLE_RATE, stream_factory=factory)
     rec.start()
     made[0].feed([1, 2])
     made[0].feed([3, 4, 5])
@@ -108,10 +108,42 @@ def test_first_moments_are_skipped_on_every_recording(streams):
 
 def test_skipped_audio_does_not_count_towards_the_limit(streams):
     made, factory = streams
-    rec = Recorder(max_seconds=2 / SAMPLE_RATE, skip_seconds=2 / SAMPLE_RATE, stream_factory=factory)
+    rec = Recorder(max_seconds=2 / SAMPLE_RATE, skip_seconds=lambda: 2 / SAMPLE_RATE,
+                   stream_factory=factory)
     rec.start()
     made[0].feed([1, 2, 3, 4, 5])
     np.testing.assert_allclose(rec.stop(), [3, 4])
+
+
+def test_ready_is_called_once_when_the_first_sound_arrives(streams):
+    made, factory = streams
+    ready = threading.Semaphore(0)
+    rec = Recorder(on_ready=ready.release, ready_timeout=60, stream_factory=factory)
+    rec.start()
+    assert not ready.acquire(timeout=0.05)  # the microphone is open but not hearing yet
+    made[0].feed([0.1])
+    assert ready.acquire(timeout=2)
+    made[0].feed([0.2])
+    assert not ready.acquire(timeout=0.05)
+    rec.stop()
+
+
+def test_ready_is_called_anyway_if_no_sound_ever_comes(streams):
+    _, factory = streams
+    ready = threading.Event()
+    rec = Recorder(on_ready=ready.set, ready_timeout=0.01, stream_factory=factory)
+    rec.start()
+    assert ready.wait(2)
+    rec.stop()
+
+
+def test_ready_is_not_called_after_stopping(streams):
+    _, factory = streams
+    ready = threading.Event()
+    rec = Recorder(on_ready=ready.set, ready_timeout=0.05, stream_factory=factory)
+    rec.start()
+    rec.cancel()
+    assert not ready.wait(0.2)
 
 
 def test_loudness_of_each_block_is_reported(streams):

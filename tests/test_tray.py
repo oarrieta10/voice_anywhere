@@ -84,6 +84,21 @@ def test_choosing_a_language_applies_and_remembers_it(monkeypatch, tmp_path):
     assert t.status_text() == "Ready: press F9 to dictate (Spanish)"
 
 
+def test_chime_item_flips_and_remembers(monkeypatch, tmp_path):
+    from voice_anywhere import chime, settings
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.delenv("VOICE_CHIME", raising=False)
+    monkeypatch.setattr(chime, "_choice", None)
+    t = Tray(FakeOverlay())
+    t.toggle_chime()
+    assert not chime.enabled()
+    assert settings.load() == {"chime": False}
+    t.toggle_chime()
+    assert chime.enabled()
+    assert settings.load() == {"chime": True}
+
+
 def test_every_menu_language_has_a_short_name():
     for _, code in tray.LANGUAGES:
         assert code in tray.LANGUAGE_SHORT

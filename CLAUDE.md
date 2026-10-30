@@ -22,8 +22,11 @@ change or depend on Kuadrant.
 - **Feedback:** a small floating black pill in the bottom-right corner above the taskbar (live sound
   bars while listening, a calm dot wave while transcribing, fades in and out), plus
   the tray icon changing state. It must not take keyboard focus away from the target window.
-  A soft chime (`voice_anywhere/chime.py`) plays when listening starts; the first moment of each
-  recording is thrown away so the chime is not transcribed.
+  The pill and a chime (`voice_anywhere/chime.py`, `sounds/pull-out-551.wav`, played with the
+  standard library's `winsound`) appear together when the microphone delivers its first sound:
+  a Bluetooth headset takes about 0.8 s to switch into call mode, and sound cannot play during
+  that switch. The sound heard during the chime is thrown away so it is not transcribed. The
+  tray's Chime item turns it on or off (remembered in `settings.json`).
 - **Transcription:** `voice_anywhere/transcriber.py`, faster-whisper on the CPU, `int8`, `vad_filter=True`,
   `local_files_only=True`. The model is preloaded in the background at start-up.
 - **Inserting the text:** save the clipboard, put the text on it, send `Ctrl+V` with the Win32
@@ -53,7 +56,7 @@ change or depend on Kuadrant.
 | `VOICE_WHISPER_LANG` | Language code, `auto`, or a list such as `en,es` (detect, choosing only from those) | `en` |
 | `VOICE_HOTKEY` | Hotkey, for example `ctrl+alt+space` | `ctrl+alt+space` |
 | `VOICE_CLEANUP` | Rule-based text cleanup (`voice_anywhere/cleanup.py`), `on` or `off` | `on` |
-| `VOICE_CHIME` | Chime when listening starts (`voice_anywhere/chime.py`), `on` or `off` | `on` |
+| `VOICE_CHIME` | Chime when listening starts, `on` or `off`; the tray's Chime item wins | `on` |
 
 ## Conventions
 - **Plain language.** Oscar is a consulting engineer, not a full-time developer. Explain changes simply
