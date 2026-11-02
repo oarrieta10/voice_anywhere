@@ -9,10 +9,9 @@ Works for English and Spanish. Rules, in order:
      because removing them could change the meaning.
   2. A spoken correction erases the current sentence; earlier sentences stay:
        "Fine. Send it to Bob, scratch that, send it to Alice." -> "Fine. Send it to Alice."
-     "scratch that" and "borra eso" work anywhere. "correction" and "corrección" only work
-     standing alone, with punctuation on both sides (or at the very start), so "We need a
-     correction to the invoice." stays. If Whisper ended the sentence just before the
-     phrase, that sentence is the one erased. The next word gets a capital.
+     The phrases are "scratch that" and "borra eso", as whole words, in any capitals. If
+     Whisper ended the sentence just before the phrase, that sentence is the one erased.
+     The next word gets a capital.
   3. A word said twice in a row is kept once: "the the report" -> "the report".
      Words that are often doubled on purpose are left alone ("that that", "had had",
      "no no", "sí sí", "ya ya", ...).
@@ -27,7 +26,7 @@ import os
 import re
 
 FILLERS = r"(?:u+m+|u+h+|uhm|e+r+m*|h+m+|e+h+|e+m+|m{2,})"
-_MARK = "\x00"  # marks where a filler was taken out, for rules 2 and 5
+_MARK = "\x00"  # marks where a filler was taken out, for rule 5
 # A filler as a whole word (not part of "uh-huh" or "'em"), with an optional comma before
 # and after.
 _FILLER = re.compile(r"(?:,\s*|\s+|^)(?<![-'’])\b" + FILLERS + r"\b(?![-'’])(?:\s*,)?",
@@ -39,15 +38,9 @@ _DOUBLED = re.compile(r"\b(" + _WORD + r")(?:[\s,]+\1\b)+", re.IGNORECASE)
 # A marked spot at the start of the text or of a sentence, then (after any spaces, commas
 # and an opening ¿ or ¡) the first letter of the next word.
 _MARKED_START = re.compile(r"(^|[.!?])(\s*)" + _MARK + r"[\s,]*([¿¡]?)([^\W\d_])")
-# A filler taken out next to "correction" counts as the punctuation that went with it:
-# "Send it to Bob, um, correction, um, send it to Alice."
-_CORRECTION = re.compile(
-    r"[¿¡]?\b(?:scratch\s+that|borra\s+eso)\b(?![-'’])"
-    r"|(?:^|(?<=[.!?…," + _MARK + r"]))\s*[¿¡]?(?:correction|corrección)\b"
-    r"(?=\s*[,:;.!?…—–" + _MARK + r"]|\s*-\s)",
-    re.IGNORECASE)
+_CORRECTION = re.compile(r"[¿¡]?\b(?:scratch\s+that|borra\s+eso)\b(?![-'’])", re.IGNORECASE)
 _SENTENCE_END = re.compile(r"[.!?…]+\s+(?=[¿¡]?(\S))")
-_SKIP_AROUND = " \t\r\n,.;:!?…—–-" + _MARK  # spaces and punctuation next to a correction
+_SKIP_AROUND = " \t\r\n,.;:!?…—–-"  # spaces and punctuation next to a correction
 _FIRST_LETTER = re.compile(r"^([¿¡]?)([^\W\d_])")
 
 
@@ -108,10 +101,8 @@ def clean(text: str) -> str:
     if not text:
         return text
     was_capitalised = text.lstrip()[:1].isupper() or text.lstrip()[1:2].isupper()
-    # Corrections look at the filler marks, so they run before those are cleared.
-    cleaned = _apply_corrections(_remove_fillers(text))
-    cleaned = _restore_capitals(cleaned, was_capitalised)
-    cleaned = _tidy(_remove_doubles(cleaned))
+    cleaned = _restore_capitals(_remove_fillers(text), was_capitalised)
+    cleaned = _tidy(_apply_corrections(_remove_doubles(cleaned)))
     if not re.search(r"[^\W_]", cleaned):
         return ""  # nothing but fillers, punctuation or erased sentences
     return cleaned

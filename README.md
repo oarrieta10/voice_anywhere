@@ -33,15 +33,12 @@ straight through it.
     (English um, uh, uhm, er, erm, hmm; Spanish eh, em, mmm). Real words that are sometimes
     used as fillers ("este", "o sea", "pues", "like") are left alone;
   - a spoken correction erases the sentence you are in, and earlier sentences stay. Say
-    **"scratch that"** or **"borra eso"**, or **"correction"** or **"corrección"**, and carry on:
+    **"scratch that"** or **"borra eso"** and carry on, with or without a pause:
     "The budget is fine. Send it to Bob, scratch that, send it to Alice." becomes "The budget is
     fine. Send it to Alice." If you say it after finishing a sentence, that sentence is erased, and
-    if nothing is left, nothing is typed.
-    Tip: "correction" only counts when it stands alone, so "We need a correction to the invoice"
-    stays as it is. That depends on Whisper writing punctuation around it, so pause briefly around
-    it, or use "scratch that", which works with or without a pause. With no pause, "correction"
-    may not work and the text is typed as said. "Scratch that" and "borra eso" work anywhere,
-    so they also fire if you mean them literally ("don't scratch that surface");
+    if nothing is left, nothing is typed. The whole sentence goes, so say the new one in full.
+    The phrases work anywhere, so they also fire if you mean them literally
+    ("don't scratch that surface");
   - a word said twice by accident is kept once: "the the report" becomes "the report".
     Words often doubled on purpose stay ("that that", "had had", "no no", "sí sí", "ya ya");
   - stray spaces and leftover commas are removed, and a sentence that started with a filler
