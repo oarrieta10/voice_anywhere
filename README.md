@@ -32,6 +32,16 @@ straight through it.
   - filler sounds go: "I think, um, we should" becomes "I think we should"
     (English um, uh, uhm, er, erm, hmm; Spanish eh, em, mmm). Real words that are sometimes
     used as fillers ("este", "o sea", "pues", "like") are left alone;
+  - a spoken correction erases the sentence you are in, and earlier sentences stay. Say
+    **"scratch that"** or **"borra eso"**, or **"correction"** or **"corrección"**, and carry on:
+    "The budget is fine. Send it to Bob, scratch that, send it to Alice." becomes "The budget is
+    fine. Send it to Alice." If you say it after finishing a sentence, that sentence is erased, and
+    if nothing is left, nothing is typed.
+    Tip: "correction" only counts when it stands alone, so "We need a correction to the invoice"
+    stays as it is. That depends on Whisper writing punctuation around it, so pause briefly around
+    it, or use "scratch that", which works with or without a pause. With no pause, "correction"
+    may not work and the text is typed as said. "Scratch that" and "borra eso" work anywhere,
+    so they also fire if you mean them literally ("don't scratch that surface");
   - a word said twice by accident is kept once: "the the report" becomes "the report".
     Words often doubled on purpose stay ("that that", "had had", "no no", "sí sí", "ya ya");
   - stray spaces and leftover commas are removed, and a sentence that started with a filler
@@ -214,7 +224,7 @@ How the code is laid out (`voice_anywhere\`):
 | `hotkey.py` | The global hotkey and Esc, through the Windows `RegisterHotKey` function; a keyboard hook for Caps Lock and Ctrl+Shift |
 | `recorder.py` | Microphone recording into memory (16 kHz mono), with the 2-minute limit |
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
-| `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
+| `cleanup.py` | Tidies the text: filler sounds, spoken corrections, doubled words, spacing |
 | `chime.py` | The chime when listening starts (`sounds\intuition-561.wav`) |
 | `settings.py` | Remembers choices made in the tray menu (the language) |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |

@@ -33,6 +33,12 @@ change or depend on Kuadrant.
   tray's Chime item turns it on or off (remembered in `settings.json`).
 - **Transcription:** `voice_anywhere/transcriber.py`, faster-whisper on the CPU, `int8`, `vad_filter=True`,
   `local_files_only=True`. The model is preloaded in the background at start-up.
+- **Spoken corrections** (`voice_anywhere/cleanup.py`, part of `VOICE_CLEANUP`): a phrase erases the
+  current sentence, or the sentence just ended, and earlier sentences stay. "scratch that" and
+  "borra eso" fire anywhere as whole words. "correction" and "corrección" fire only standing alone
+  (start of text, sentence end or comma before; comma, colon, dash, full stop or similar after), so
+  they depend on Whisper writing punctuation: pause briefly around them, or use "scratch that".
+  Without a pause, "correction" may not fire and the text is typed as said.
 - **Inserting the text:** save the clipboard, put the text on it, send `Ctrl+V` with the Win32
   `SendInput` function through `ctypes`, then restore the previous clipboard contents.
   Insert into the window that had focus when recording started.
