@@ -223,5 +223,6 @@ How the code is laid out (`voice_anywhere\`):
 | `overlay.py` | Shows the pill in a see-through, click-through window that never takes the focus |
 
 `scripts\make_shortcut.ps1` makes the Startup shortcut; `scripts\make_icon.py` redraws
-`voice-anywhere.ico` (`.venv\Scripts\python.exe -m scripts.make_icon`); `scripts\make_chime.py`
+`voice-anywhere.ico` and the white `voice-anywhere-white.ico` used by the desktop shortcut
+(`.venv\Scripts\python.exe -m scripts.make_icon`); `scripts\make_chime.py`
 turns the chime's source sound into the WAV file the app plays (`.venv\Scripts\python.exe -m scripts.make_chime`).
