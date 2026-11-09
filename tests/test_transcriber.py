@@ -35,6 +35,36 @@ def test_array_is_passed_straight_to_the_model(fake_model):
     assert kwargs["vad_filter"] is True
 
 
+def test_no_word_list_means_no_hints(fake_model):
+    transcriber.transcribe(np.zeros(16000, dtype=np.float32))
+    assert fake_model.calls[0][1]["hotwords"] is None
+
+
+def test_words_to_expect_are_given_to_whisper(fake_model):
+    from voice_anywhere import my_words
+
+    my_words.path().write_text("Kuadrant\nArrieta\ncool ant -> Kuadrant\n", encoding="utf-8")
+    transcriber.transcribe(np.zeros(16000, dtype=np.float32))
+    assert fake_model.calls[0][1]["hotwords"] == "Kuadrant, Arrieta"
+
+
+def test_hints_are_kept_when_the_language_is_redone(monkeypatch):
+    from voice_anywhere import my_words
+
+    my_words.path().write_text("Kuadrant\n", encoding="utf-8")
+    monkeypatch.setenv("VOICE_WHISPER_LANG", "en,es")
+    hints = []
+
+    class Model(GuessingModel):
+        def transcribe(self, source, language=None, **kwargs):
+            hints.append(kwargs["hotwords"])
+            return super().transcribe(source, language, **kwargs)
+
+    monkeypatch.setattr(transcriber, "_get_model", lambda: Model("pt", [("pt", 0.6), ("es", 0.3)]))
+    transcriber.transcribe(np.zeros(16000, dtype=np.float32))
+    assert hints == ["Kuadrant", "Kuadrant"]
+
+
 def test_bytes_are_wrapped_in_a_file_like_object(fake_model):
     transcriber.transcribe(b"RIFF....")
     source, _ = fake_model.calls[0]

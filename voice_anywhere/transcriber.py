@@ -12,6 +12,8 @@ import os
 import threading
 import time
 
+from . import my_words
+
 DEFAULT_MODEL = "small"
 
 _model = None
@@ -128,15 +130,15 @@ def transcribe(audio) -> dict:
     model = _get_model()
     started = time.perf_counter()
     allowed = allowed_languages()
+    # Oscar's words to expect (my_words.py) make Whisper more likely to pick those words.
+    options = {"vad_filter": True, "beam_size": 5, "hotwords": my_words.hints()}
     try:
         # Whisper detects the language before writing any text (the segments are only
         # produced as they are read), so a wrong guess costs one detection, not a transcription.
-        segments, info = model.transcribe(source(), language=language(),
-                                          vad_filter=True, beam_size=5)
+        segments, info = model.transcribe(source(), language=language(), **options)
         if allowed and info.language not in allowed:
             segments, info = model.transcribe(
-                source(), language=_best_allowed(info.all_language_probs, allowed),
-                vad_filter=True, beam_size=5)
+                source(), language=_best_allowed(info.all_language_probs, allowed), **options)
         text = " ".join(s.text.strip() for s in segments).strip()
     except Exception as exc:  # undecodable audio, etc.
         raise TranscriberError(f"Could not transcribe the recording: {exc}"[:300]) from exc
