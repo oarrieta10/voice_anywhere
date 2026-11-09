@@ -13,7 +13,7 @@ change or depend on Kuadrant.
 
 ## Agreed design
 - **Tray app** (`pystray` + `Pillow`) that starts with Windows and lives by the clock. Menu: status, Language (English / Spanish /
-  detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Shortcut, Chime, Quit.
+  detect English or Spanish, remembered in `%LOCALAPPDATA%\voice-anywhere\settings.json`), Shortcut, Chime, My words, Quit.
 - **Hotkey: press once to start, press again to stop** (toggle, not hold-to-talk). Default `Ctrl+Alt+Space`.
   `Esc` while recording cancels and inserts nothing. Register the hotkey with the Win32 `RegisterHotKey`
   function through `ctypes` (no extra package). The tray's Shortcut menu shows the current shortcut
@@ -33,6 +33,11 @@ change or depend on Kuadrant.
   tray's Chime item turns it on or off (remembered in `settings.json`).
 - **Transcription:** `voice_anywhere/transcriber.py`, faster-whisper on the CPU, `int8`, `vad_filter=True`,
   `local_files_only=True`. The model is preloaded in the background at start-up.
+- **My words** (`voice_anywhere/my_words.py`): Oscar's own list in `%LOCALAPPDATA%\voice-anywhere\my-words.txt`,
+  opened in Notepad from the tray and read again for each dictation. Plain lines are words to expect,
+  given to Whisper as `hotwords` (first 50 only); `wrong -> right` lines are exact whole-word fixes
+  applied after the cleanup, even with `VOICE_CLEANUP` off. Log counts only, never the words.
+  Tests point `LOCALAPPDATA` at a temporary folder (`tests/conftest.py`) so the real list is never read.
 - **Inserting the text:** save the clipboard, put the text on it, send `Ctrl+V` with the Win32
   `SendInput` function through `ctypes`, then restore the previous clipboard contents.
   Insert into the window that had focus when recording started.

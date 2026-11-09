@@ -4,11 +4,12 @@ Tray is the "ui" the Dictation controller talks to. Its methods may be called fr
 thread. run() shows the tray icon and blocks until Quit is chosen.
 """
 import logging
+import os
 import threading
 
 from PIL import Image, ImageDraw
 
-from . import chime, settings, transcriber
+from . import chime, my_words, settings, transcriber
 from .hotkey import HotkeyError
 
 log = logging.getLogger("voice_anywhere")
@@ -144,6 +145,14 @@ class Tray:
         log.info("Chime turned %s", "on" if on else "off")
         self._refresh()
 
+    def open_my_words(self, icon=None, item=None, opener=os.startfile) -> None:
+        """Called from the My words menu item: open the word list in Notepad."""
+        try:
+            my_words.open_in_editor(opener)
+        except OSError as exc:
+            log.warning("Could not open my-words.txt: %s", type(exc).__name__)
+            self.notify(f"Could not open the word list: {exc.strerror or exc}", "error")
+
     def _title(self) -> str:
         return ("Voice Anywhere: " + self.status_text())[:127]  # Windows tooltip limit
 
@@ -185,6 +194,7 @@ class Tray:
                                  enabled=False),
                 pystray.MenuItem("Record new shortcut…", self.record_shortcut))),
             pystray.MenuItem("Chime", self.toggle_chime, checked=lambda item: chime.enabled()),
+            pystray.MenuItem("My words…", self.open_my_words),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self._quit),
         )

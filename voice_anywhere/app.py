@@ -10,7 +10,7 @@ The transcribed text is never logged; only lengths and timings are.
 import logging
 import threading
 
-from . import chime, cleanup, transcriber
+from . import chime, cleanup, my_words, transcriber
 from .hotkey import HotkeyError, HotkeyListener
 from .inserter import Inserter
 from .recorder import SAMPLE_RATE, Recorder
@@ -22,7 +22,7 @@ MIN_SECONDS = 0.3  # shorter recordings are treated as an accidental double pres
 
 
 def _clean(text):
-    return cleanup.clean(text) if cleanup.enabled() else text
+    return my_words.fix(cleanup.clean(text) if cleanup.enabled() else text)
 
 
 def _spawn(target):

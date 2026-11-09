@@ -51,8 +51,30 @@ to the clock to keep it visible).
 | Red | Listening |
 
 Right-click it to see the current status, to pick the **Language** you will speak, to change the
-**Shortcut**, to turn the **Chime** on or off (a tick means on), or to **Quit**. Your choices are
-remembered.
+**Shortcut**, to turn the **Chime** on or off (a tick means on), to edit **My words**, or to
+**Quit**. Your choices are remembered.
+
+**My words…** opens your own word list in Notepad (the first time, it is created with a short
+explanation). Save the file and the change counts from your next dictation, no restart needed.
+
+```
+# Words to expect: one per line (names, places, technical terms)
+Kuadrant
+
+# Fixes: what Whisper writes -> what you want typed
+cool ant -> Kuadrant
+```
+
+- **Fixes** are exact: whole words only, in any capitals ("ant" never changes "plant"), and a fix at
+  the start of a sentence gets a capital letter. They apply even with `VOICE_CLEANUP` off.
+- **Words to expect** are given to Whisper as a hint before it listens, so it is more likely to
+  pick them. It is a nudge, not a guarantee: if a word still comes out wrong, add a fix. Keep the
+  list short (only the first 50 are used), because a long list can make Whisper write those words
+  where you did not say them.
+- When Whisper gets the same word wrong twice, add it: that is how the app "learns".
+
+The list is kept in `%LOCALAPPDATA%\voice-anywhere\my-words.txt`, on this laptop only. The log
+records how many words and fixes there are, never which ones.
 
 The **Shortcut** menu shows the current shortcut and has **Record new shortcut...**: the pill says
 "Press your shortcut...", you press the keys you want and let go. Press Esc to cancel, or wait
@@ -216,6 +238,7 @@ How the code is laid out (`voice_anywhere\`):
 | `transcriber.py` | faster-whisper speech-to-text on the CPU |
 | `cleanup.py` | Tidies the text: filler sounds, doubled words, spacing |
 | `chime.py` | The chime when listening starts (`sounds\intuition-561.wav`) |
+| `my_words.py` | Your word list: words to expect (hints for Whisper) and fixes |
 | `settings.py` | Remembers choices made in the tray menu (the language) |
 | `inserter.py` | Paste at the cursor: clipboard + Ctrl+V, then restore the clipboard |
 | `tray.py` | The tray icon and its menu |

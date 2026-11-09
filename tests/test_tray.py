@@ -194,6 +194,26 @@ def test_recording_refused_during_dictation_hides_the_prompt():
     assert overlay.log == ["prompt", "hide"] and notes == ["Finish the dictation first"]
 
 
+def test_my_words_item_opens_the_list():
+    from voice_anywhere import my_words
+
+    opened = []
+    Tray(FakeOverlay()).open_my_words(opener=opened.append)
+    assert opened == [str(my_words.path())] and my_words.path().exists()
+
+
+def test_my_words_that_cannot_open_says_why():
+    t = Tray(FakeOverlay())
+    notes = []
+    t.notify = lambda message, kind="error": notes.append(message)
+
+    def broken(path):
+        raise OSError(2, "No program is set up to open text files")
+
+    t.open_my_words(opener=broken)
+    assert notes == ["Could not open the word list: No program is set up to open text files"]
+
+
 def test_shortcut_names_read_well():
     t = Tray(FakeOverlay())
     for code, label in [("f9", "F9"), ("capslock", "Caps Lock"), ("ctrl+shift", "Ctrl+Shift")]:

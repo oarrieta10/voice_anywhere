@@ -216,6 +216,19 @@ def test_cleanup_can_be_switched_off(monkeypatch):
     assert inserter.log[-1] == ("insert", "Um, the pump is on.")
 
 
+def test_my_fixes_apply_even_with_cleanup_off(monkeypatch):
+    from voice_anywhere import my_words
+
+    my_words.path().write_text("cool ant -> Kuadrant\n", encoding="utf-8")
+    for cleanup_setting, typed in (("on", "Call Kuadrant."), ("off", "Um, call Kuadrant.")):
+        monkeypatch.setenv("VOICE_CLEANUP", cleanup_setting)
+        d, recorder, inserter, ui, hotkey, pending = make(text="Um, call cool ant.")
+        d.toggle()
+        d.toggle()
+        pending.pop()()
+        assert inserter.log[-1] == ("insert", typed)
+
+
 def test_only_fillers_counts_as_no_speech():
     d, recorder, inserter, ui, hotkey, pending = make(text="Um.")
     d.toggle()
