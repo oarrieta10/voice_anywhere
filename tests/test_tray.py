@@ -198,8 +198,17 @@ def test_my_words_item_opens_the_list():
     from voice_anywhere import my_words
 
     opened = []
-    Tray(FakeOverlay()).open_my_words(opener=opened.append)
+    t = Tray(FakeOverlay())
+    t.opener = opened.append
+    t.open_my_words()
     assert opened == [str(my_words.path())] and my_words.path().exists()
+
+
+def test_menu_can_be_built():
+    # pystray rejects a bad menu action only when the menu is built, which crashed the app
+    # at start-up once; building it here catches that without showing a tray icon.
+    names = [item.text for item in Tray(FakeOverlay()).menu().items]
+    assert "My words…" in names and "Quit" in names
 
 
 def test_my_words_that_cannot_open_says_why():
@@ -210,7 +219,8 @@ def test_my_words_that_cannot_open_says_why():
     def broken(path):
         raise OSError(2, "No program is set up to open text files")
 
-    t.open_my_words(opener=broken)
+    t.opener = broken
+    t.open_my_words()
     assert notes == ["Could not open the word list: No program is set up to open text files"]
 
 

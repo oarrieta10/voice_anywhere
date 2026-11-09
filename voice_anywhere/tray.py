@@ -62,6 +62,7 @@ class Tray:
         self.on_hotkey_change = None  # set by run(); raises HotkeyError if the key cannot be used
         self.on_record_shortcut = None  # set by run(); calls back with (hotkey, message)
         self.state = "idle"
+        self.opener = os.startfile  # opens the word list in Notepad
         self._images = {s: make_icon(c) for s, c in STATE_COLOURS.items()}
         self._stopped = threading.Event()
         self.icon = None
@@ -145,10 +146,12 @@ class Tray:
         log.info("Chime turned %s", "on" if on else "off")
         self._refresh()
 
-    def open_my_words(self, icon=None, item=None, opener=os.startfile) -> None:
+    def open_my_words(self, icon=None, item=None) -> None:
         """Called from the My words menu item: open the word list in Notepad."""
+        # pystray refuses menu actions that take more than (icon, item), so the
+        # opener is an attribute that tests can replace, not a parameter.
         try:
-            my_words.open_in_editor(opener)
+            my_words.open_in_editor(self.opener)
         except OSError as exc:
             log.warning("Could not open my-words.txt: %s", type(exc).__name__)
             self.notify(f"Could not open the word list: {exc.strerror or exc}", "error")
@@ -175,8 +178,8 @@ class Tray:
         if self.icon is not None:
             self.icon.stop()
 
-    def run(self) -> None:
-        """Show the tray icon; returns when Quit is chosen."""
+    def menu(self):
+        """The right-click menu. pystray checks each action here, so a bad one fails at once."""
         import pystray
 
         def language_item(label, code):
@@ -184,7 +187,7 @@ class Tray:
                 label, lambda icon, item: self.choose_language(code), radio=True,
                 checked=lambda item: transcriber.language_setting_text() == code)
 
-        menu = pystray.Menu(
+        return pystray.Menu(
             pystray.MenuItem(lambda item: self.status_text(), None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Language", pystray.Menu(
@@ -198,6 +201,12 @@ class Tray:
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self._quit),
         )
-        self.icon = pystray.Icon("voice-anywhere", self._images["idle"], self._title(), menu)
+
+    def run(self) -> None:
+        """Show the tray icon; returns when Quit is chosen."""
+        import pystray
+
+        self.icon = pystray.Icon("voice-anywhere", self._images["idle"], self._title(),
+                                 self.menu())
         threading.Thread(target=self._keep_status_fresh, name="tray-status", daemon=True).start()
         self.icon.run()
