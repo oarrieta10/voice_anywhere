@@ -22,16 +22,21 @@ log = logging.getLogger("voice_anywhere")
 
 MAX_WORDS = 50  # a long hint list can make Whisper write those words where they were not said
 ARROWS = ("->", "→")
+# The examples are written inside sentences, not as lines of their own: an example line
+# with a # in front looks like an entry, and words added to it were silently ignored.
 STARTER = """\
 # My words for Voice Anywhere. Save this file and the change counts from the next dictation.
-# Lines starting with # are notes and are ignored.
+#
+# Lines starting with # are notes and are ignored. Write your own lines WITHOUT a # in
+# front, below the last note.
 #
 # Words to expect: one per line, such as names, places or technical terms. Whisper is more
-# likely to pick them. Keep the list short (up to 50 are used).
-#   Kuadrant
+# likely to pick them. Keep the list short (up to 50 are used). Example line:  Kuadrant
 #
-# Fixes: what Whisper writes -> what you want typed. Whole words only, any capitals.
-#   cool ant -> Kuadrant
+# Fixes: what Whisper writes, then ->, then what you want typed. Whole words only, in any
+# capitals. Example line:  cool ant -> Kuadrant
+#
+# Your lines go below.
 
 """
 _last_counts = None
